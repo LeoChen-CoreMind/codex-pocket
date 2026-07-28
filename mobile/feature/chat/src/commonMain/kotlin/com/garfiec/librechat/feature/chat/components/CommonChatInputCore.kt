@@ -38,6 +38,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -63,10 +66,13 @@ import com.garfiec.librechat.feature.chat.resources.cd_start_voice_recording
 import com.garfiec.librechat.feature.chat.resources.cd_stop_generation
 import com.garfiec.librechat.feature.chat.resources.cd_update_queued_message
 import com.garfiec.librechat.feature.chat.resources.editing_queued_message
+import com.garfiec.librechat.feature.chat.resources.follow_up_mode_queue
+import com.garfiec.librechat.feature.chat.resources.follow_up_mode_steer
 import com.garfiec.librechat.feature.chat.resources.hint_message
 import com.garfiec.librechat.feature.chat.resources.hint_message_model
 import com.garfiec.librechat.feature.chat.resources.recording
 import com.garfiec.librechat.feature.chat.viewmodel.ChatInputGates
+import com.garfiec.librechat.feature.chat.viewmodel.FollowUpMode
 import com.garfiec.librechat.feature.chat.viewmodel.QueuedMessage
 import org.jetbrains.compose.resources.stringResource
 
@@ -91,6 +97,7 @@ data class ChatInputState(
      *  false, the send button stays plain Stop while streaming. */
     val canQueue: Boolean = false,
     val canStop: Boolean = true,
+    val followUpMode: FollowUpMode = FollowUpMode.QUEUE,
     /** True while the composer is editing a queued item (queued-edit mode): the send button
      *  becomes "Update" and an editing banner shows above the input. */
     val isEditingQueued: Boolean = false,
@@ -127,6 +134,7 @@ fun CommonChatInputCore(
     /** Queue a follow-up while streaming. Null (or [ChatInputState.canQueue] false) keeps the
      *  button as plain Stop mid-stream (e.g. on a brand-new conversation). */
     onQueue: (() -> Unit)? = null,
+    onFollowUpModeChange: (FollowUpMode) -> Unit = {},
     onSteerQueuedMessage: (String) -> Unit = {},
     canSteerQueuedMessage: Boolean = false,
     /** Number of queued messages held by a Stop/error pause. >0 shows the "Send queued" banner
@@ -171,6 +179,7 @@ fun CommonChatInputCore(
                 .navigationBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
+            val hasComposerContent = state.inputText.isNotBlank() || state.attachedFiles.isNotEmpty()
             // Ghost queue, pinned directly above the composer. No scroll wrapper: the input bar is
             // bottom-anchored so the queue grows upward (the text field stays put), and a nested
             // vertical scroll here would fight the long-press drag-reorder. Self-hides when empty.
@@ -195,6 +204,17 @@ fun CommonChatInputCore(
                     count = queuedPausedCount,
                     onClick = onSendQueuedMessages,
                     modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+
+            if (state.isStreaming && state.canQueue && hasComposerContent && !state.isEditingQueued) {
+                FollowUpModeSelector(
+                    selected = state.followUpMode,
+                    onSelected = onFollowUpModeChange,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .width(184.dp)
+                        .padding(bottom = 6.dp),
                 )
             }
 
@@ -244,7 +264,6 @@ fun CommonChatInputCore(
                 leadingButtons()
                 textFieldContent()
                 trailingSpacer()
-                val hasComposerContent = state.inputText.isNotBlank() || state.attachedFiles.isNotEmpty()
                 SendStopButton(
                     isStreaming = state.isStreaming,
                     canSend = hasComposerContent,
@@ -253,6 +272,7 @@ fun CommonChatInputCore(
                     onSend = onSend,
                     onStop = onStop,
                     onQueue = onQueue ?: {},
+                    steerFollowUp = state.followUpMode == FollowUpMode.STEER,
                     // In queued-edit mode the button commits the edit instead of send/stop/queue.
                     isEditingQueued = state.isEditingQueued,
                     onUpdate = onCommitEdit,
@@ -264,6 +284,28 @@ fun CommonChatInputCore(
             }
         }
         bottomContent()
+    }
+}
+
+@Composable
+private fun FollowUpModeSelector(
+    selected: FollowUpMode,
+    onSelected: (FollowUpMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val options = listOf(
+        FollowUpMode.STEER to stringResource(Res.string.follow_up_mode_steer),
+        FollowUpMode.QUEUE to stringResource(Res.string.follow_up_mode_queue),
+    )
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        options.forEachIndexed { index, (mode, label) ->
+            SegmentedButton(
+                selected = selected == mode,
+                onClick = { onSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                label = { Text(label, maxLines = 1) },
+            )
+        }
     }
 }
 
@@ -294,6 +336,7 @@ fun SendStopButton(
     isAwaitingUploadSend: Boolean = false,
     onCancelPendingSend: () -> Unit = {},
     canStop: Boolean = true,
+    steerFollowUp: Boolean = false,
 ) {
     val mode = when {
         isEditingQueued -> SendButtonMode.UPDATE
@@ -388,13 +431,23 @@ fun SendStopButton(
                 onClick = onQueue,
                 modifier = Modifier.size(56.dp),
                 colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    containerColor = if (steerFollowUp) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                    contentColor = if (steerFollowUp) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    },
                 ),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(Res.string.cd_add_to_queue),
+                    contentDescription = stringResource(
+                        if (steerFollowUp) Res.string.follow_up_mode_steer else Res.string.cd_add_to_queue,
+                    ),
                 )
             }
 

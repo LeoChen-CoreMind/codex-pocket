@@ -47,6 +47,7 @@ import com.garfiec.librechat.core.model.usage.TokenUsage
 import com.garfiec.librechat.feature.chat.model.McpServerDisplayData
 import com.garfiec.librechat.feature.chat.model.PromptMentionDisplayData
 import com.garfiec.librechat.feature.chat.viewmodel.ChatInputGates
+import com.garfiec.librechat.feature.chat.viewmodel.FollowUpMode
 import com.garfiec.librechat.feature.chat.viewmodel.QueuedMessage
 import com.garfiec.librechat.feature.chat.resources.*
 import com.garfiec.librechat.feature.chat.resources.Res
@@ -68,6 +69,8 @@ fun ChatInput(
     onQueue: () -> Unit = {},
     canQueue: Boolean = false,
     canStop: Boolean = true,
+    followUpMode: FollowUpMode = FollowUpMode.QUEUE,
+    onFollowUpModeChange: (FollowUpMode) -> Unit = {},
     onSteerQueuedMessage: (String) -> Unit = {},
     canSteerQueuedMessage: Boolean = false,
     queuedPausedCount: Int = 0,
@@ -162,6 +165,7 @@ fun ChatInput(
         gates = gates,
         canQueue = canQueue,
         canStop = canStop,
+        followUpMode = followUpMode,
         isEditingQueued = isEditingQueued,
         isAwaitingUploadSend = isAwaitingUploadSend,
         contextUsage = contextUsage,
@@ -176,6 +180,7 @@ fun ChatInput(
         onStop = onStop,
         onToggleTool = onToggleTool,
         onQueue = onQueue,
+        onFollowUpModeChange = onFollowUpModeChange,
         onSteerQueuedMessage = onSteerQueuedMessage,
         canSteerQueuedMessage = canSteerQueuedMessage,
         queuedPausedCount = queuedPausedCount,

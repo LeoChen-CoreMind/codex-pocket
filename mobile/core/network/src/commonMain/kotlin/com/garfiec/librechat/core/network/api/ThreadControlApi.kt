@@ -110,7 +110,10 @@ class ThreadControlApi(private val client: HttpClient) {
     }
 
     suspend fun cancelQueued(threadId: String, clientMessageId: String) {
-        client.delete { url { path("api/threads/$threadId/queue/$clientMessageId") } }
+        client.delete {
+            url { path("api/threads/$threadId/queue/$clientMessageId") }
+            setBody(EmptyJsonRequest())
+        }
     }
 
     suspend fun steerQueued(

@@ -43,6 +43,7 @@ import androidx.compose.ui.zIndex
 import com.garfiec.librechat.feature.chat.resources.Res
 import com.garfiec.librechat.feature.chat.resources.cd_cancel_queued_message
 import com.garfiec.librechat.feature.chat.resources.cd_reorder_queued_message
+import com.garfiec.librechat.feature.chat.resources.follow_up_mode_steer
 import com.garfiec.librechat.feature.chat.resources.queued_attachment_only
 import com.garfiec.librechat.feature.chat.viewmodel.QueuedMessage
 import org.jetbrains.compose.resources.stringResource
@@ -214,7 +215,7 @@ private fun QueuedMessageRow(
             )
 
             TextButton(onClick = onSteer, enabled = canSteer && !isDragging) {
-                Text("引导")
+                Text(stringResource(Res.string.follow_up_mode_steer))
             }
 
             IconButton(

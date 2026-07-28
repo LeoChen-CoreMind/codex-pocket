@@ -856,21 +856,45 @@ class ChatViewModel(
      * gate so a queued message with a still-uploading attachment captures it.
      */
     fun queueMessage() {
-        if (!_uiState.value.isStreaming) return
-        val conversationId = _uiState.value.conversationId ?: return
-        val text = _uiState.value.inputText.trim()
+        val state = _uiState.value
+        if (!state.isStreaming) return
+        val conversationId = state.conversationId ?: return
+        val text = state.inputText.trim()
+        val deliveryMode = when (state.followUpMode) {
+            FollowUpMode.STEER -> DeliveryMode.STEER
+            FollowUpMode.QUEUE -> DeliveryMode.QUEUE
+        }
+        val expectedTurnId = state.remoteTurnId
         withUploadGate(text) { ready ->
             viewModelScope.launch(defaultDispatcher) {
-                runCatching { submitRunningMessage(conversationId, ready) }
+                runCatching { submitRunningMessage(conversationId, ready, deliveryMode, expectedTurnId) }
                     .onFailure { error -> _uiState.update { it.copy(error = error.message) } }
             }
         }
     }
 
+    fun setFollowUpMode(mode: FollowUpMode) {
+        _uiState.update { it.copy(queue = it.queue.copy(followUpMode = mode)) }
+    }
+
     @OptIn(ExperimentalUuidApi::class)
-    private suspend fun submitRunningMessage(conversationId: String, text: String) {
+    private suspend fun submitRunningMessage(
+        conversationId: String,
+        text: String,
+        deliveryMode: DeliveryMode,
+        expectedTurnId: String?,
+    ) {
         val state = _uiState.value
         val params = state.modelParameters.dynamicValues
+        val currentTurnId = if (deliveryMode == DeliveryMode.STEER) {
+            runCatching { threadControlApi.activity(conversationId) }
+                .onSuccess(::applyThreadActivity)
+                .getOrNull()
+                ?.turnId
+                ?: expectedTurnId
+        } else {
+            expectedTurnId
+        }
         val result = threadControlApi.submit(
             conversationId,
             SubmitThreadMessageRequest(
@@ -882,8 +906,8 @@ class ChatViewModel(
                 fullAccess = params["codex_approval_mode"] == "fullAccess" ||
                     params["codex_full_access"].toBoolean(),
                 fileIds = fileDelegate.attachedFiles.value.mapNotNull { it.fileId },
-                deliveryMode = DeliveryMode.QUEUE,
-                expectedTurnId = state.remoteTurnId,
+                deliveryMode = deliveryMode,
+                expectedTurnId = currentTurnId,
             ),
         )
         clearComposer()
@@ -1052,16 +1076,20 @@ class ChatViewModel(
     fun cancelQueued(localId: String) {
         // Ignore ghost ×/reorder while an edit is in flight, so the queue can't shift under the
         // session's captured originalIndex.
-        if (_uiState.value.isEditingQueued) return
-        if (localId in _uiState.value.queue.bridgeQueueIds) {
+        val state = _uiState.value
+        if (localId in state.queue.bridgeQueueIds) {
             val conversationId = _uiState.value.conversationId ?: return
             viewModelScope.launch(defaultDispatcher) {
                 runCatching {
                     threadControlApi.cancelQueued(conversationId, localId)
                     applyThreadActivity(threadControlApi.activity(conversationId))
+                }.onSuccess {
+                    val session = _uiState.value.editingQueuedItem
+                    if (session?.original?.localId == localId) finishBridgeQueuedEdit(session)
                 }.onFailure { error -> _uiState.update { it.copy(error = error.message) } }
             }
         } else {
+            if (state.isEditingQueued) return
             queueDelegate.cancel(localId)
         }
     }
@@ -1071,15 +1099,20 @@ class ChatViewModel(
         if (state.isEditingQueued || localId !in state.queue.bridgeQueueIds) return
         val conversationId = state.conversationId ?: return
         if (!steeringQueuedIds.add(localId)) return
-        val expectedTurnId = state.remoteTurnId
-        if (state.activitySource != "pocket" || !state.steerable || expectedTurnId == null) {
-            steeringQueuedIds.remove(localId)
-            _uiState.update { it.copy(error = "当前任务不可引导，消息仍保留在队列中") }
-            return
-        }
         viewModelScope.launch(defaultDispatcher) {
-            runCatching { threadControlApi.steerQueued(conversationId, localId, expectedTurnId) }
+            var attemptedTurnId: String? = null
+            runCatching {
+                val activity = threadControlApi.activity(conversationId)
+                applyThreadActivity(activity)
+                val expectedTurnId = activity.turnId
+                if (!activity.active || activity.source != "pocket" || !activity.steerable || expectedTurnId == null) {
+                    return@runCatching null
+                }
+                attemptedTurnId = expectedTurnId
+                threadControlApi.steerQueued(conversationId, localId, expectedTurnId)
+            }
                 .mapCatching { firstResult ->
+                    if (firstResult == null) return@mapCatching null
                     if (firstResult.steered || firstResult.reason != "turn_changed") {
                         firstResult
                     } else {
@@ -1087,7 +1120,7 @@ class ChatViewModel(
                         applyThreadActivity(activity)
                         val currentTurnId = activity.turnId
                         if (activity.active && activity.source == "pocket" && activity.steerable &&
-                            currentTurnId != null && currentTurnId != expectedTurnId
+                            currentTurnId != null && currentTurnId != attemptedTurnId
                         ) {
                             threadControlApi.steerQueued(conversationId, localId, currentTurnId)
                         } else {
@@ -1096,7 +1129,9 @@ class ChatViewModel(
                     }
                 }
                 .onSuccess { result ->
-                    if (!result.steered) {
+                    if (result == null) {
+                        _uiState.update { it.copy(error = "当前任务不可引导，消息仍保留在等待队列中") }
+                    } else if (!result.steered) {
                         _uiState.update { it.copy(error = "转为引导失败，消息仍保留在队列中：${result.reason}") }
                     }
                     runCatching { threadControlApi.activity(conversationId) }.onSuccess(::applyThreadActivity)

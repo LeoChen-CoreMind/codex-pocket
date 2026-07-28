@@ -24,6 +24,7 @@ import com.garfiec.librechat.core.data.repository.UserRepository
 import com.garfiec.librechat.core.data.util.PermissionGate
 import com.garfiec.librechat.core.model.Message
 import com.garfiec.librechat.core.network.api.BridgeEventsApi
+import com.garfiec.librechat.core.network.api.ThreadControlApi
 import com.garfiec.librechat.core.network.api.VsCodeApi
 import com.garfiec.librechat.feature.chat.viewmodel.delegate.PlatformDelegateFactory
 import io.mockk.coEvery
@@ -78,6 +79,7 @@ class ChatViewModelContextProjectionInitTest {
     private val chatRepository = mockk<ChatRepository>(relaxed = true)
     private val messageRepository = mockk<MessageRepository>(relaxed = true)
     private val bridgeEventsApi = mockk<BridgeEventsApi>(relaxed = true)
+    private val threadControlApi = mockk<ThreadControlApi>(relaxed = true)
     private val vsCodeApi = mockk<VsCodeApi>(relaxed = true)
     private val fileRepository = mockk<FileRepository>(relaxed = true)
     private val configRepository = mockk<ConfigRepository>(relaxed = true)
@@ -212,6 +214,7 @@ class ChatViewModelContextProjectionInitTest {
             serverFileSelectionHandoff = serverFileSelectionHandoff,
             activeAccountProvider = InMemoryActiveAccountProvider(AccountState.Resolved(AccountId("srv:user-1"))),
             bridgeEventsApi = bridgeEventsApi,
+            threadControlApi = threadControlApi,
             vsCodeApi = vsCodeApi,
         )
 }
