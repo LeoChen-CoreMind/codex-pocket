@@ -232,6 +232,30 @@ class Companion {
           await this.register();
           break;
         }
+        case "refreshThread": {
+          if (typeof command.threadId !== "string" || !command.threadId) {
+            throw new Error("refreshThread command is missing threadId");
+          }
+          const tabs = vscode.window.tabGroups.all
+            .flatMap((group) => group.tabs)
+            .filter((tab) => threadIdFromTab(tab) === command.threadId);
+          if (tabs.length === 0) break;
+          const shouldFocus = tabs.some((tab) => tab.isActive);
+          await vscode.window.tabGroups.close(tabs, true);
+          const uri = vscode.Uri.from({
+            scheme: "openai-codex",
+            authority: "route",
+            path: `/local/${command.threadId}`
+          });
+          await vscode.commands.executeCommand(
+            "vscode.openWith",
+            uri,
+            "chatgpt.conversationEditor",
+            { preview: false, preserveFocus: !shouldFocus }
+          );
+          await this.register();
+          break;
+        }
         case "closeThread": {
           if (typeof command.threadId !== "string" || !command.threadId) {
             throw new Error("closeThread command is missing threadId");

@@ -6,6 +6,7 @@ import { ThreadService } from "./services/thread-service.js";
 import { VsCodeInstanceService } from "./services/vscode-instance-service.js";
 import { McpDialogService } from "./services/mcp-dialog-service.js";
 import { createConnection, createServer } from "node:net";
+import type { BridgeEvent } from "./types.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -13,6 +14,12 @@ async function main(): Promise<void> {
   const events = new EventBus(config.eventBufferSize, config.maxWsBufferedBytes);
   const threads = new ThreadService(client, events, config);
   const vscodeInstances = new VsCodeInstanceService(config.vscodeBindingFile, events);
+  const refreshCompletedPocketThread = (event: BridgeEvent) => {
+    if (event.type === "turn.completed" && event.threadId) {
+      vscodeInstances.refreshOpenThread(event.threadId);
+    }
+  };
+  events.on("event", refreshCompletedPocketThread);
   const mcpDialogs = new McpDialogService(config.mcpDialogSettingsFile, config.apiToken, events);
   const app = await buildServer(config, client, threads, events, vscodeInstances, mcpDialogs);
 
@@ -47,6 +54,7 @@ async function main(): Promise<void> {
     shuttingDown = true;
     app.log.info({ signal }, "Shutting down");
     events.close();
+    events.off("event", refreshCompletedPocketThread);
     vscodeInstances.close();
     await mcpDialogs.close();
     await Promise.all(forwardingServers.map((server) => new Promise<void>((resolve) => {

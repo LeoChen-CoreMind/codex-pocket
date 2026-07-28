@@ -83,6 +83,9 @@ private data class QueueTextRequest(val text: String)
 @Serializable
 private data class QueueOrderRequest(val clientMessageIds: List<String>)
 
+@Serializable
+private class EmptyJsonRequest
+
 class ThreadControlApi(private val client: HttpClient) {
     suspend fun activity(threadId: String): ThreadActivityDto =
         client.get { url { path("api/threads/$threadId/activity") } }.body()
@@ -127,8 +130,14 @@ class ThreadControlApi(private val client: HttpClient) {
     }
 
     suspend fun pauseQueue(threadId: String): ThreadActivityDto =
-        client.post { url { path("api/threads/$threadId/queue/pause") } }.body()
+        client.post {
+            url { path("api/threads/$threadId/queue/pause") }
+            setBody(EmptyJsonRequest())
+        }.body()
 
     suspend fun resumeQueue(threadId: String): ThreadActivityDto =
-        client.post { url { path("api/threads/$threadId/queue/resume") } }.body()
+        client.post {
+            url { path("api/threads/$threadId/queue/resume") }
+            setBody(EmptyJsonRequest())
+        }.body()
 }
