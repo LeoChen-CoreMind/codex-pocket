@@ -4,7 +4,7 @@
   <img src="mobile/docs/brand/codex-pocket-icon.svg" width="128" alt="Codex Pocket 图标">
 </p>
 
-<p align="center"><strong>把电脑上的 Codex 会话装进口袋，离开工位也能继续查看、发送、审批和控制任务。</strong></p>
+<p align="center"><strong>面向 VS Code 系编辑器 Codex 插件的移动控制端，让编程任务离开工位也能继续。</strong></p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License"></a>
@@ -12,11 +12,28 @@
   <img src="https://img.shields.io/badge/editor-VS%20Code%20%7C%20Cursor%20%7C%20Antigravity%20%7C%20Windsurf-555" alt="Supported editors">
 </p>
 
-Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、Windows Bridge 和编辑器 Companion** 组成。它把电脑上正在运行的 Codex 会话安全地连接到手机，让你不用一直守在电脑前，也能看到任务进度、继续发送要求、处理审批、管理排队消息，并在需要时停止由手机发起的任务。
+Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、Windows Bridge 和编辑器 Companion** 组成。它连接和控制的是 **VS Code、Cursor、Antigravity、Windsurf 等 Code 系编辑器中运行的 Codex 插件会话**，让你不用一直守在电脑前，也能看到编程任务进度、继续发送要求、处理审批、管理排队消息，并在需要时停止由手机发起的任务。
 
-它不是另一个聊天壳，也不会把你的工作区托管到第三方中转服务器。Bridge 运行在你自己的 Windows 电脑上，手机通过局域网连接；会话状态、工作区和编辑器窗口仍由本机环境管理。
+它不是另一个通用聊天壳，也不是 OpenAI 官方 Codex 桌面应用的复刻或修改版。Codex Pocket 专注于编辑器内的编程工作流：识别当前编辑器窗口和工作区、同步插件会话、显示工具调用与文件修改、处理代码执行审批，并为长时间运行的开发任务提供排队、引导和远程控制。
+
+Bridge 运行在你自己的 Windows 电脑上，不会把工作区托管到项目提供的第三方中转服务器。手机默认通过局域网连接；会话状态、工作区和编辑器窗口仍由本机环境管理。
 
 > 本项目是社区维护的非官方项目，与 OpenAI、Microsoft、Anysphere、Google 或 LibreChat 官方无隶属关系。Codex、VS Code、Cursor、Antigravity、Windsurf 和 LibreChat 是其各自所有者的商标。
+
+## 项目定位
+
+Codex Pocket 和官方 Codex 桌面应用面向不同的使用方式。本项目的目标不是替代官方产品，而是为已经在 Code 系编辑器中使用 Codex 插件的开发者补充一个手机控制入口。
+
+| 对比项 | Codex Pocket | 官方 Codex 桌面应用 |
+| --- | --- | --- |
+| 产品形态 | Code 系编辑器内 Codex 插件的第三方移动伴侣和控制端 | OpenAI 官方提供和维护的独立产品 |
+| 主要入口 | VS Code、Cursor、Antigravity、Windsurf 等编辑器及 Android 手机 | 官方桌面应用 |
+| 核心场景 | 编程任务、工作区文件、工具调用、代码审批、任务队列和运行中引导 | 以官方产品实际提供的功能和支持范围为准 |
+| 会话来源 | 当前编辑器窗口中运行的 Codex 插件会话 | 官方应用自身管理的会话 |
+| 数据通道 | 用户自己运行的 Windows Bridge，默认通过可信局域网连接 | 由官方产品和服务管理 |
+| 项目关系 | 社区开源、非官方，不修改也不重新分发官方桌面应用 | OpenAI 官方产品 |
+
+如果你的主要工作方式是“在 VS Code 类编辑器中让 Codex 修改项目”，Codex Pocket 提供的是这条工作流缺少的移动查看与控制能力。
 
 ## 为什么实用
 
@@ -29,6 +46,7 @@ Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、W
 
 ## 适合谁
 
+- 已经在 VS Code、Cursor、Antigravity 或 Windsurf 中使用 Codex 插件，并希望用手机控制插件会话的开发者。
 - 经常让 Codex 执行编译、重构、检索或其他长时间任务的开发者。
 - 同时使用 VS Code、Cursor、Antigravity、Windsurf 等多个 Code 系编辑器的人。
 - 希望在局域网内自主管理连接、密钥和数据路径，不依赖公共聊天中转服务的人。
@@ -336,6 +354,10 @@ MCP 对话让支持 Model Context Protocol 的 AI 客户端主动向手机发起
 MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录或公开截图中。
 
 ## 常见问题
+
+### 这是官方 Codex 桌面版的手机版吗
+
+不是。Codex Pocket 是社区开源的第三方项目，控制的是 Code 系编辑器中的 Codex 插件会话。它不修改、不打包也不重新分发 OpenAI 官方 Codex 桌面应用，重点解决开发者在手机上继续查看和控制编辑器编程任务的问题。
 
 ### 手机无法访问 Bridge
 
