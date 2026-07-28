@@ -6,6 +6,7 @@ export interface BridgeConfig {
   port: number;
   apiToken: string | null;
   codexBin: string;
+  codexProxyPath: string | null;
   requestTimeoutMs: number;
   historyTimeoutMs: number;
   maxLineBytes: number;
@@ -99,8 +100,13 @@ function intEnv(name: string, fallback: number): number {
 export function loadConfig(): BridgeConfig {
   const host = process.env.BRIDGE_HOST?.trim() || "127.0.0.1";
   const apiToken = process.env.BRIDGE_API_TOKEN?.trim() || null;
+  const configuredProxy = process.env.BRIDGE_CODEX_PROXY?.trim();
+  const codexProxyPath = configuredProxy ? resolve(configuredProxy) : null;
   if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1" && !apiToken) {
     throw new Error("BRIDGE_API_TOKEN is required when BRIDGE_HOST is not loopback");
+  }
+  if (codexProxyPath && !existsSync(codexProxyPath)) {
+    throw new Error(`BRIDGE_CODEX_PROXY does not exist: ${codexProxyPath}`);
   }
 
   const dataDirectory = join(
@@ -112,6 +118,7 @@ export function loadConfig(): BridgeConfig {
     port: intEnv("BRIDGE_PORT", 47831),
     apiToken,
     codexBin: resolveCodexBin(),
+    codexProxyPath,
     requestTimeoutMs: intEnv("CODEX_REQUEST_TIMEOUT_MS", 30_000),
     historyTimeoutMs: intEnv("CODEX_HISTORY_TIMEOUT_MS", 120_000),
     maxLineBytes: intEnv("CODEX_MAX_LINE_BYTES", 96 * 1024 * 1024),

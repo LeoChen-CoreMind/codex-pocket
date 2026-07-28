@@ -38,17 +38,32 @@ func main() {
 		exitWith(delegate(args))
 	}
 
-	ws, err := connectBridge()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[codex-proxy] Bridge unavailable, using Codex directly: %v\n", err)
-		exitWith(delegate(args))
-	}
+	ws := waitForBridge()
 	defer ws.conn.Close()
 
-	err = relay(ws)
+	err := relay(ws)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
 		fmt.Fprintf(os.Stderr, "[codex-proxy] Bridge connection closed: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func waitForBridge() *wsConn {
+	for attempt := 0; ; attempt++ {
+		ws, err := connectBridge()
+		if err == nil {
+			if attempt > 0 {
+				fmt.Fprintln(os.Stderr, "[codex-proxy] Bridge connected")
+			}
+			return ws
+		}
+
+		// Falling back to another app-server splits desktop and mobile state. Keep
+		// the official editor client waiting until the shared Bridge is available.
+		if attempt == 0 || attempt%30 == 0 {
+			fmt.Fprintf(os.Stderr, "[codex-proxy] Waiting for Bridge at %s: %v\n", bridgeAddress, err)
+		}
+		time.Sleep(time.Second)
 	}
 }
 

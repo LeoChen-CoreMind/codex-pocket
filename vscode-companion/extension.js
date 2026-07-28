@@ -68,6 +68,7 @@ class Companion {
       .filter((folder) => folder.uri.scheme === "file")
       .map((folder) => folder.uri.fsPath);
     const workspaceName = vscode.workspace.name || null;
+    const configuredCli = vscode.workspace.getConfiguration("chatgpt").get("cliExecutable");
     await this.request("POST", "/internal/vscode-companion/register", {
       instanceId: this.instanceId,
       editorName: vscode.env.appName,
@@ -78,6 +79,7 @@ class Companion {
       extensionHostPid: process.pid,
       machineName: os.hostname(),
       vscodeVersion: vscode.version,
+      codexCliExecutable: typeof configuredCli === "string" && configuredCli ? configuredCli : null,
       openThreads: this.openThreads()
     });
   }
@@ -230,6 +232,25 @@ class Companion {
             { preview: false, preserveFocus: false }
           );
           await this.register();
+          break;
+        }
+        case "configureCodexProxy": {
+          if (typeof command.path !== "string" || !path.isAbsolute(command.path)) {
+            throw new Error("configureCodexProxy command is missing an absolute path");
+          }
+          const configuration = vscode.workspace.getConfiguration("chatgpt");
+          const current = configuration.get("cliExecutable");
+          const normalize = (value) => path.resolve(value).toLocaleLowerCase("en-US");
+          if (typeof current === "string" && current && normalize(current) === normalize(command.path)) break;
+          await configuration.update("cliExecutable", command.path, vscode.ConfigurationTarget.Global);
+          const reloadLabel = "\u91cd\u65b0\u52a0\u8f7d";
+          const selected = await vscode.window.showInformationMessage(
+            "Codex Pocket \u5df2\u914d\u7f6e\u5171\u4eab\u8fde\u63a5\uff0c\u91cd\u65b0\u52a0\u8f7d\u540e\u751f\u6548\u3002",
+            reloadLabel
+          );
+          if (selected === reloadLabel) {
+            await vscode.commands.executeCommand("workbench.action.reloadWindow");
+          }
           break;
         }
         case "closeThread": {

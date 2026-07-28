@@ -8,6 +8,7 @@ export type VsCodeCommandType =
   | "focus"
   | "newChat"
   | "openThread"
+  | "configureCodexProxy"
   | "closeThread"
   | "openFile";
 
@@ -30,6 +31,7 @@ export interface VsCodeInstanceRegistration {
   extensionHostPid: number;
   machineName: string;
   vscodeVersion: string;
+  codexCliExecutable: string | null;
   openThreads: VsCodeOpenThread[];
 }
 
@@ -213,6 +215,17 @@ export class VsCodeInstanceService {
     return command;
   }
 
+  configureCodexProxy(instanceId: string, path: string): VsCodeCommand {
+    const instance = this.instances.get(instanceId);
+    if (!instance || !this.isOnline(instance)) throw new Error("Editor instance is not online");
+    const pending = instance.commands.find((command) =>
+      command.sequence > instance.lastCompletedSequence &&
+      command.type === "configureCodexProxy" &&
+      command.path === path
+    );
+    return pending ?? this.enqueueFor(instanceId, "configureCodexProxy", undefined, path);
+  }
+
   close(): void {
     clearInterval(this.onlineSweep);
   }
@@ -283,6 +296,7 @@ export class VsCodeInstanceService {
       extensionHostPid: instance.extensionHostPid,
       machineName: instance.machineName,
       vscodeVersion: instance.vscodeVersion,
+      codexCliExecutable: instance.codexCliExecutable,
       openThreads: instance.openThreads.map((thread) => ({ ...thread })),
       lastSeenAt: instance.lastSeenAt,
       online: this.isOnline(instance),
@@ -304,6 +318,7 @@ export class VsCodeInstanceService {
       extensionHostPid: instance.extensionHostPid,
       machineName: instance.machineName,
       vscodeVersion: instance.vscodeVersion,
+      codexCliExecutable: instance.codexCliExecutable,
       openThreads: instance.openThreads
     });
   }

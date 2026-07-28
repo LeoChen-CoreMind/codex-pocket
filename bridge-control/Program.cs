@@ -327,6 +327,7 @@ internal sealed class MainForm : Form
             info.Environment["BRIDGE_HOST_PROCESS_ID"] = host.Id.ToString();
             info.Environment["BRIDGE_HOST_EXECUTABLE"] = host.Path;
             info.Environment["BRIDGE_JSON_WORKER"] = runtime.WorkerPath;
+            info.Environment["BRIDGE_CODEX_PROXY"] = runtime.ProxyPath;
             info.Environment["NODE_NO_WARNINGS"] = "1";
 
             var process = Process.Start(info) ?? throw new InvalidOperationException("无法启动内置 Bridge 运行时");
@@ -703,7 +704,13 @@ internal sealed class MainForm : Form
     }
 }
 
-internal sealed record RuntimeAssets(string Directory, string NodePath, string BridgePath, string WorkerPath)
+internal sealed record RuntimeAssets(
+    string Directory,
+    string NodePath,
+    string BridgePath,
+    string WorkerPath,
+    string ProxyPath
+)
 {
     private const string Prefix = "CodexPocketBridge.Runtime.";
 
@@ -715,12 +722,38 @@ internal sealed record RuntimeAssets(string Directory, string NodePath, string B
         ExtractResource(assembly, Prefix + "node.exe", Path.Combine(directory, "node.exe"));
         ExtractResource(assembly, Prefix + "bridge.cjs", Path.Combine(directory, "bridge.cjs"));
         ExtractResource(assembly, Prefix + "json-parser.worker.cjs", Path.Combine(directory, "json-parser.worker.cjs"));
+        var proxyPath = ExtractVersionedResource(assembly, Prefix + "codex-proxy.exe", directory, "codex-proxy", ".exe");
         return new RuntimeAssets(
             directory,
             Path.Combine(directory, "node.exe"),
             Path.Combine(directory, "bridge.cjs"),
-            Path.Combine(directory, "json-parser.worker.cjs")
+            Path.Combine(directory, "json-parser.worker.cjs"),
+            proxyPath
         );
+    }
+
+    private static string ExtractVersionedResource(
+        Assembly assembly,
+        string resourceName,
+        string directory,
+        string baseName,
+        string extension
+    )
+    {
+        using var source = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Missing static resource: {resourceName}");
+        using var hash = SHA256.Create();
+        var digest = Convert.ToHexString(hash.ComputeHash(source)).ToLowerInvariant()[..16];
+        source.Position = 0;
+        var destination = Path.Combine(directory, $"{baseName}-{digest}{extension}");
+        if (File.Exists(destination) && SameContent(source, destination)) return destination;
+        source.Position = 0;
+        var temporary = destination + ".tmp";
+        using (var output = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None)) {
+            source.CopyTo(output);
+        }
+        File.Move(temporary, destination, overwrite: true);
+        return destination;
     }
 
     private static void ExtractResource(Assembly assembly, string resourceName, string destination)

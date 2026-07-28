@@ -20,5 +20,6 @@
     <EmbeddedResource Include="runtime\node.exe" LogicalName="CodexPocketBridge.Runtime.node.exe" />
     <EmbeddedResource Include="runtime\bridge.cjs" LogicalName="CodexPocketBridge.Runtime.bridge.cjs" />
     <EmbeddedResource Include="runtime\json-parser.worker.cjs" LogicalName="CodexPocketBridge.Runtime.json-parser.worker.cjs" />
+    <EmbeddedResource Include="runtime\codex-proxy.exe" LogicalName="CodexPocketBridge.Runtime.codex-proxy.exe" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { resolve } from "node:path";
 import websocket from "@fastify/websocket";
 import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -59,6 +60,7 @@ const vscodeRegistrationSchema = z.object({
   extensionHostPid: z.number().int().positive(),
   machineName: z.string().min(1).max(300),
   vscodeVersion: z.string().min(1).max(100),
+  codexCliExecutable: z.string().max(4_000).nullable().optional().default(null),
   openThreads: z.array(z.object({
     threadId: z.string().min(1).max(200),
     label: z.string().max(500),
@@ -107,6 +109,15 @@ function integerQuery(value: unknown, fallback: number, max: number): number {
   const parsed = typeof value === "string" ? Number.parseInt(value, 10) : fallback;
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.min(parsed, max);
+}
+
+function sameExecutablePath(left: string | null, right: string): boolean {
+  if (!left) return false;
+  const normalize = (value: string) => {
+    const absolute = resolve(value);
+    return process.platform === "win32" ? absolute.toLocaleLowerCase("en-US") : absolute;
+  };
+  return normalize(left) === normalize(right);
 }
 
 export async function buildServer(
@@ -225,6 +236,9 @@ export async function buildServer(
     if (!isLoopback(request.ip)) throw new Error("Companion registration is loopback only");
     const registration = vscodeRegistrationSchema.parse(request.body);
     const instance = vscodeInstances.register(registration);
+    if (config.codexProxyPath && !sameExecutablePath(registration.codexCliExecutable, config.codexProxyPath)) {
+      vscodeInstances.configureCodexProxy(registration.instanceId, config.codexProxyPath);
+    }
     threads.updateDesktopActivitiesForInstance(registration.instanceId, registration.openThreads.map((thread) => ({
       threadId: thread.threadId,
       running: thread.running,

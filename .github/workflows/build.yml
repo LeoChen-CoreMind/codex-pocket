@@ -41,6 +41,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+
       - name: Install Bridge dependencies
         working-directory: bridge
         run: npm.cmd ci
