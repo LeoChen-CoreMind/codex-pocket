@@ -54,59 +54,48 @@ Codex Pocket 和官方 Codex 桌面应用面向不同的使用方式。本项目
 
 ## 界面预览
 
-### Android APP
-
 <table>
   <tr>
-    <th width="50%">在线会话</th>
-    <th width="50%">实时对话与消息控制</th>
+    <th>界面</th>
+    <th>预览</th>
+    <th>用途</th>
   </tr>
   <tr>
-    <td align="center" valign="top">
-      <img src="docs/screenshots/online-sessions.png" width="360" alt="Codex Pocket 在线会话列表">
-    </td>
-    <td align="center" valign="top">
-      <img src="docs/screenshots/chat-control.png" width="360" alt="Codex Pocket 实时对话和消息控制">
-    </td>
-  </tr>
-  <tr>
-    <th>移动审批</th>
-    <th>MCP 手机交互</th>
-  </tr>
-  <tr>
-    <td align="center" valign="top">
-      <img src="docs/screenshots/approval.png" width="360" alt="Codex Pocket 移动审批">
-    </td>
-    <td align="center" valign="top">
-      <img src="docs/screenshots/mcp-dialog.png" width="360" alt="Codex Pocket MCP 交互">
-    </td>
-  </tr>
-</table>
-
-### Windows 服务端
-
-<table>
-  <tr>
-    <th>Codex Pocket Bridge 控制器</th>
-  </tr>
-  <tr>
+    <td><strong>在线会话</strong><br><sub>Android APP</sub></td>
     <td align="center">
-      <img src="docs/screenshots/server-console.png" width="900" alt="Codex Pocket Windows Bridge 控制器">
+      <img src="docs/screenshots/online-sessions.png" width="120" alt="Codex Pocket 在线会话列表">
     </td>
+    <td>查看当前在线的编辑器、会话和工作区，快速进入正确的编程任务。</td>
+  </tr>
+  <tr>
+    <td><strong>实时对话</strong><br><sub>Android APP</sub></td>
+    <td align="center">
+      <img src="docs/screenshots/chat-control.png" width="120" alt="Codex Pocket 实时对话和消息控制">
+    </td>
+    <td>显示回复、思考和工具调用，并提供发送、停止、排队和引导操作。</td>
+  </tr>
+  <tr>
+    <td><strong>移动审批</strong><br><sub>Android APP</sub></td>
+    <td align="center">
+      <img src="docs/screenshots/approval.png" width="120" alt="Codex Pocket 移动审批">
+    </td>
+    <td>直接在手机上处理命令执行、文件修改、权限申请和计划确认。</td>
+  </tr>
+  <tr>
+    <td><strong>MCP 交互</strong><br><sub>Android APP</sub></td>
+    <td align="center">
+      <img src="docs/screenshots/mcp-dialog.png" width="120" alt="Codex Pocket MCP 交互">
+    </td>
+    <td>接收 AI 发起的 Markdown、图片、选项和自由文本交互请求。</td>
+  </tr>
+  <tr>
+    <td><strong>Bridge 控制器</strong><br><sub>Windows 服务端</sub></td>
+    <td align="center">
+      <img src="docs/screenshots/server-console.png" width="300" alt="Codex Pocket Windows Bridge 控制器">
+    </td>
+    <td>管理 Bridge、Codex、监听地址、访问密钥、在线编辑器、FTP 和 FRP 状态。</td>
   </tr>
 </table>
-
-需要上传的图片如下：
-
-| 类型 | 文件名 | 应该截取的页面和内容 |
-| --- | --- | --- |
-| APP | `online-sessions.png` | 打开侧边栏的“在线列表”，画面中要能看到编辑器名称、会话名称和工作区 |
-| APP | `chat-control.png` | 一个正在运行的对话，画面中要有消息时间线、输入框、发送/停止按钮以及队列或引导操作 |
-| APP | `approval.png` | 对话中的计划确认、命令审批或权限审批卡片，并显示可操作按钮 |
-| APP | `mcp-dialog.png` | MCP 请求在手机上的实际效果，包含 Markdown、图片、选择项或文本输入中的一种或多种 |
-| 服务端 | `server-console.png` | 完整的 `Codex Pocket Bridge` 窗口，展示 Bridge/Codex/FRP 状态、监听地址、在线编辑器和操作按钮 |
-
-图片会直接显示在本页。维护者只需按 [截图上传说明](docs/screenshots/README.md) 将对应文件上传到 `docs/screenshots/`，不需要再修改 README。上传前必须遮挡访问密钥、IP、用户名、本机路径和私人会话内容。
 
 ## 核心功能
 
