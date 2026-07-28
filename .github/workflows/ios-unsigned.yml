@@ -1,0 +1,85 @@
+name: iOS Unsigned IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned iPhone IPA
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Show Apple toolchain
+        run: |
+          uname -m
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Build unsigned device app
+        run: |
+          xcodebuild \
+            -project mobile/iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath mobile/iosApp/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          app='mobile/iosApp/build/Build/Products/Release-iphoneos/iosApp.app'
+          test -d "$app"
+
+          version=$(sed -n 's/^versionName=//p' mobile/version.properties | head -n 1 | tr -d '[:space:]')
+          test -n "$version"
+          output="CodexPocket-iOS-unsigned-${version}.ipa"
+          directory='ios-release'
+
+          rm -rf "$directory"
+          mkdir -p "$directory/Payload"
+          cp -R "$app" "$directory/Payload/CodexPocket.app"
+          (
+            cd "$directory"
+            /usr/bin/zip -qry "$output" Payload
+            shasum -a 256 "$output" > SHA256SUMS.txt
+          )
+          echo "IOS_ARTIFACT_NAME=CodexPocket-iOS-unsigned-${version}" >> "$GITHUB_ENV"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.IOS_ARTIFACT_NAME }}
+          path: |
+            ios-release/*.ipa
+            ios-release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
