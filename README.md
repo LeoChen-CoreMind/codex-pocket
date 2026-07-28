@@ -36,6 +36,8 @@ Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、W
 
 ## 界面预览
 
+### Android APP
+
 <p align="center">
   <img src="docs/screenshots/online-sessions.png" width="260" alt="Codex Pocket 在线会话列表">
   <img src="docs/screenshots/chat-control.png" width="260" alt="Codex Pocket 实时对话和消息控制">
@@ -46,11 +48,23 @@ Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、W
   <img src="docs/screenshots/mcp-dialog.png" width="320" alt="Codex Pocket MCP 交互">
 </p>
 
+### Windows 服务端
+
 <p align="center">
   <img src="docs/screenshots/server-console.png" width="820" alt="Codex Pocket Windows Bridge 控制器">
 </p>
 
-图片会直接显示在本页。维护者只需按 [截图上传说明](docs/screenshots/README.md) 将对应文件上传到 `docs/screenshots/`，不需要再修改 README。
+需要上传的图片如下：
+
+| 类型 | 文件名 | 应该截取的页面和内容 |
+| --- | --- | --- |
+| APP | `online-sessions.png` | 打开侧边栏的“在线列表”，画面中要能看到编辑器名称、会话名称和工作区 |
+| APP | `chat-control.png` | 一个正在运行的对话，画面中要有消息时间线、输入框、发送/停止按钮以及队列或引导操作 |
+| APP | `approval.png` | 对话中的计划确认、命令审批或权限审批卡片，并显示可操作按钮 |
+| APP | `mcp-dialog.png` | MCP 请求在手机上的实际效果，包含 Markdown、图片、选择项或文本输入中的一种或多种 |
+| 服务端 | `server-console.png` | 完整的 `Codex Pocket Bridge` 窗口，展示 Bridge/Codex/FRP 状态、监听地址、在线编辑器和操作按钮 |
+
+图片会直接显示在本页。维护者只需按 [截图上传说明](docs/screenshots/README.md) 将对应文件上传到 `docs/screenshots/`，不需要再修改 README。上传前必须遮挡访问密钥、IP、用户名、本机路径和私人会话内容。
 
 ## 核心功能
 
@@ -163,6 +177,117 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 
 地址和密钥必须来自同一台正在运行的 Bridge。重新生成密钥后，手机端需要使用新密钥重新连接。
 
+## 使用方法
+
+完成首次安装和连接后，日常使用按下面的顺序操作。
+
+### 1. 启动电脑端
+
+1. 打开需要工作的 VS Code、Cursor、Antigravity 或 Windsurf 窗口。
+2. 在编辑器中打开工作区和 Codex 会话。
+3. 运行 `CodexPocketBridge.exe`。
+4. 确认控制器中的“Bridge 状态”和“Codex 状态”正常；如果更换了编辑器进程，点击“刷新进程”，重新选择后点击“应用并启动”。
+
+Bridge 启动成功后可以让控制器保持运行。关闭 Bridge 后，APP 将无法继续同步电脑上的会话。
+
+### 2. 在 APP 中选择会话
+
+1. 打开 Codex Pocket，APP 会使用已保存的地址和密钥自动连接。
+2. 打开侧边栏，在“在线列表”中找到当前编辑器和工作区。
+3. 点击会话进入聊天页。在线条目会显示编辑器、工作区和运行状态，避免在多个窗口之间选错任务。
+
+普通历史会话可以查看，但只有 Companion 当前上报为在线的编辑器窗口才能获得完整的窗口绑定和实时控制能力。
+
+### 3. 发送新任务
+
+1. 在输入框中填写要求，也可以从工作区文件中选择文件并引用到消息。
+2. 输入框有内容时，右侧按钮自动变为“发送”。
+3. 点击发送后，APP 会创建 Pocket 所有的 Codex 回合，并实时显示思考、回复、工具调用和文件修改。
+
+### 4. 在任务运行中追加要求
+
+- 直接发送的新消息会先进入队列，等待当前回合结束后执行。
+- 如果补充内容必须立刻影响当前任务，在队列项上点击“引导”。
+- 引导成功后，消息会通过 `turn/steer` 加入当前回合；如果回合已经变化，消息会继续安全地留在队列中。
+- 队列项可以修改、取消或调整顺序，适合连续安排多个任务。
+
+### 5. 停止当前任务
+
+1. 清空输入框，右侧按钮会从“发送”恢复为“停止”。
+2. 点击停止后，APP 会校验当前回合标识。
+3. 只有 Pocket 发起的匹配回合会被停止，桌面端独立启动的任务不会被误停。
+
+### 6. 处理审批和计划确认
+
+当 Codex 请求执行命令、修改文件、获取权限或确认计划时，审批内容会显示在对话时间线中。根据需要选择允许一次、会话内允许、拒绝或计划确认，结果会立即返回电脑端的当前任务。
+
+### 7. 使用 MCP 向手机提问
+
+1. 进入 APP 设置中的“**MCP 对话**”，打开服务。
+2. 把页面生成的 MCP 地址、Bearer Token 和提示词配置到 AI 客户端。
+3. AI 调用 MCP 工具后，APP 会收到交互请求。
+4. 在手机上查看 Markdown 或图片，完成选择或输入文字并提交。
+5. 提交结果会返回原 MCP 调用，AI 随后继续执行任务。
+
+### 8. 通过 FRP 远程使用
+
+手机和电脑不在同一个局域网时，可以用 FRP 把电脑上的对应端口映射到一台公网服务器。
+
+APP 连接 Bridge 时，只需要映射稳定手机入口：
+
+```text
+本机 127.0.0.1:47831  ->  FRP 服务器公网端口
+```
+
+现代版 `frpc.toml` 示例：
+
+```toml
+serverAddr = "你的 FRP 服务器域名或 IP"
+serverPort = 7000
+
+auth.method = "token"
+auth.token = "你的 FRP 鉴权 Token"
+
+[[proxies]]
+name = "codex-pocket-bridge"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 47831
+remotePort = 47831
+```
+
+`remotePort` 可以换成 FRP 服务端允许的其他端口。映射成功后，在 APP 中填写公网地址，例如：
+
+```text
+http://你的 FRP 服务器域名或 IP:47831
+```
+
+Windows 控制器已经提供 FRP 进程管理：
+
+1. 点击“选择 `frpc.exe`”，选择本机 FRP 客户端。
+2. 点击“选择 FRP 配置”，选择准备好的 `frpc.toml` 或 `frpc.ini`。
+3. 先确保 Bridge 状态在线，再点击“启动 FRP”。
+4. “FRP 状态”显示运行中后，使用公网地址和原 Bridge 访问密钥连接 APP。
+
+如果还要从外网使用 MCP 对话，需要在同一份 FRP 配置中再映射 APP“**MCP 对话**”页面设置的端口。例如 MCP 使用 `47832`：
+
+```toml
+[[proxies]]
+name = "codex-pocket-mcp"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 47832
+remotePort = 47832
+```
+
+Bridge 和 MCP 是两个独立服务：只远程使用 APP 时映射 `47831` 即可；需要远程调用 MCP 时，再额外映射 MCP 实际使用的端口。
+
+FRP TCP 映射本身不等于 HTTPS。公网使用时必须保留 Bridge/MCP Token 鉴权，并建议在 FRP 服务端增加 TLS、HTTPS 反向代理、访问白名单或 VPN，避免访问密钥和会话内容在不可信网络中明文传输。
+
+### 9. 结束使用
+
+只想暂时离开时可直接关闭 APP，电脑端 Codex 不会因此停止。需要完全断开服务时，在 Windows 控制器中点击“停止 Bridge”。不要在 Bridge 仍对外提供服务时公开连接地址和访问密钥。
+
 ## 消息队列和引导
 
 当 Codex 正在运行时，Codex Pocket 会区分两种追加方式：
@@ -222,6 +347,14 @@ MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录
 - MCP 客户端必须携带页面生成的 Bearer Token。
 - 不要把控制器 Bridge 地址误当成 MCP 地址，两者端口和路径可能不同。
 
+### FRP 映射成功但 APP 无法连接
+
+- APP 连接 Bridge 时确认 FRP 映射的是本机 TCP `47831`，不是只映射 MCP 端口。
+- APP 地址中的端口必须填写 FRP 的 `remotePort`，不一定与本机 `localPort` 相同。
+- 确认 FRP 服务端已放行对应公网端口，`frpc` 和 `frps` 日志中没有鉴权或端口占用错误。
+- 确认 Bridge 先于 FRP 启动，并且 Windows 控制器中的“Bridge 状态”和“FRP 状态”均为运行中。
+- 远程使用 MCP 时必须单独映射 MCP 页面配置的端口，映射 `47831` 不会自动转发 MCP 端口。
+
 ## 项目结构
 
 | 目录 | 职责 | 技术 |
@@ -238,6 +371,7 @@ MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录
 - 工作区文件访问受当前绑定编辑器窗口的工作区路径限制。
 - 审批采用先到响应生效，重复或过期响应会被拒绝。
 - 手机不会对桌面独立发起的回合执行进程级强杀。
+- FRP 远程访问必须继续使用高强度 Bridge/MCP Token，并建议叠加 TLS、访问白名单或 VPN。
 - 本项目面向个人可信网络；未经 TLS、额外访问控制和审计，不应直接暴露到公网。
 
 完整安全策略和漏洞报告方式见 [SECURITY.md](SECURITY.md)。
