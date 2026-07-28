@@ -1,0 +1,23 @@
+package = com.garfiec.librechat.core.network.sse.nwparams
+language = Objective-C
+headers = Network/Network.h
+compilerOpts = -framework Network
+linkerOpts = -framework Network
+
+---
+
+// C-level bridge for Apple's NW_PARAMETERS_DEFAULT_CONFIGURATION block pointer
+// sentinel. Kotlin/Native's platform.Network cinterop binding for that macro
+// exposes it as a Kotlin-wrapped lambda (via a knifunptr getter), which forces
+// the configure-block argument through a lambda->Obj-C-block bridge that
+// crashes at block_destroy_helper on modern iOS because Network.framework
+// passes a Swift-generic Network.ProtocolOptions<TLSProtocol> that does not
+// inherit from NSObject. By calling the macro inside a plain C function here,
+// the block pointer is resolved and handed to nw_parameters_create_secure_tcp
+// entirely at C compile/link time -- Kotlin never sees the block.
+static inline nw_parameters_t librechat_make_default_tls_tcp_parameters(void) {
+    return nw_parameters_create_secure_tcp(
+        NW_PARAMETERS_DEFAULT_CONFIGURATION,
+        NW_PARAMETERS_DEFAULT_CONFIGURATION
+    );
+}

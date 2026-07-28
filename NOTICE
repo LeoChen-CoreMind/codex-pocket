@@ -1,0 +1,20 @@
+Codex Pocket
+Copyright (c) 2026 Leo Chen and Codex Pocket contributors
+
+The mobile application is based on LibreChat Mobile:
+https://github.com/garfiec/Librechat-Mobile
+Licensed under the MIT License. Its original LICENSE file is retained at
+mobile/LICENSE.
+
+LibreChat Mobile is an independent client for LibreChat:
+https://github.com/danny-avila/LibreChat
+
+This product interoperates with OpenAI Codex and VS Code-compatible editors.
+OpenAI Codex, Visual Studio Code, Cursor, Antigravity, Windsurf, LibreChat and
+other product names are trademarks of their respective owners. Their names are
+used only to describe interoperability. No affiliation or endorsement is
+claimed.
+
+Third-party libraries remain subject to their own licenses and notices. See the
+dependency manifests in mobile/gradle/libs.versions.toml, bridge/package.json,
+bridge/proxy/go.mod and the framework references in bridge-control.

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Drawer -->
+    <string name="settings">Ajustes</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back_to_conversations">Volver a conversaciones</string>
+
+    <!-- Version mismatch dialog -->
+    <string name="version_mismatch_title">Versión del servidor incompatible</string>
+    <string name="version_mismatch_message">Esta app se creó para LibreChat v%1$s, pero tu servidor ejecuta la v%2$s. Es posible que algunas funciones no funcionen correctamente.</string>
+    <string name="dismiss">Descartar</string>
+    <string name="dont_warn_again">No volver a avisar</string>
+</resources>

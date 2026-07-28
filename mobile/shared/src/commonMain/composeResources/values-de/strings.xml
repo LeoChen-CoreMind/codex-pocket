@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Drawer -->
+    <string name="settings">Einstellungen</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back_to_conversations">Zurück zu den Unterhaltungen</string>
+
+    <!-- Version mismatch dialog -->
+    <string name="version_mismatch_title">Backend-Versionskonflikt</string>
+    <string name="version_mismatch_message">Diese App wurde für LibreChat v%1$s entwickelt, aber dein Server läuft mit v%2$s. Einige Funktionen funktionieren möglicherweise nicht korrekt.</string>
+    <string name="dismiss">Schließen</string>
+    <string name="dont_warn_again">Nicht erneut warnen</string>
+</resources>

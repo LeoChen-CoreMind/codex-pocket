@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Drawer -->
+    <string name="settings">設定</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back_to_conversations">会話に戻る</string>
+
+    <!-- Version mismatch dialog -->
+    <string name="version_mismatch_title">バックエンドのバージョン不一致</string>
+    <string name="version_mismatch_message">このアプリはLibreChat v%1$s 向けに作られていますが、お使いのサーバーは v%2$s で動作しています。一部の機能が正しく動作しない可能性があります。</string>
+    <string name="dismiss">閉じる</string>
+    <string name="dont_warn_again">今後警告しない</string>
+</resources>

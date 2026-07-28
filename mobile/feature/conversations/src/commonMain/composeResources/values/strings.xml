@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common actions -->
+    <string name="rename">Rename</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="archive">Archive</string>
+    <string name="export">Export</string>
+    <string name="share">Share</string>
+    <string name="duplicate">Duplicate</string>
+    <string name="clear">Clear</string>
+    <string name="back">Back</string>
+    <string name="new_chat">New Chat</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_new_chat">New chat</string>
+    <string name="cd_archived_conversations">Archived conversations</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_bookmarked">Bookmarked</string>
+    <string name="cd_conversation_actions">Conversation actions</string>
+    <string name="cd_add_tag">Add tag</string>
+    <string name="cd_hide_tags">Hide tags</string>
+    <string name="cd_show_tags">Show tags</string>
+    <string name="cd_clear_filter">Clear filter</string>
+    <string name="cd_unarchive">Unarchive</string>
+    <string name="cd_delete">Delete</string>
+
+    <!-- Conversation list screen -->
+    <string name="search_conversations">Search conversations\u2026</string>
+    <string name="could_not_load_conversations">Could not load conversations</string>
+    <string name="no_results_found">No results found</string>
+    <string name="no_conversations_yet">No conversations yet</string>
+    <string name="try_different_search">Try a different search term</string>
+    <string name="start_new_chat">Start a new chat to begin</string>
+    <string name="unknown_error">An unknown error occurred</string>
+    <string name="conversation_exported">Conversation exported</string>
+    <string name="link_copied">Link copied!</string>
+    <string name="imported_title">Imported: %1$s</string>
+    <string name="copy_of">Copy of %1$s</string>
+
+    <!-- Conversation actions -->
+    <string name="remove_bookmark">Remove Bookmark</string>
+    <string name="bookmark">Bookmark</string>
+    <string name="pin">Pin</string>
+    <string name="unpin">Unpin</string>
+    <string name="move_to_project">Move to project</string>
+    <string name="project_picker_title">Move to project</string>
+    <string name="project_none">No project</string>
+    <string name="project_create">Create project</string>
+    <string name="project_new_name">New project name</string>
+    <string name="project_empty_chats">No chats in this project yet</string>
+    <string name="project_sort_label">Sort</string>
+    <string name="project_sort_updated">Recently updated</string>
+    <string name="project_sort_created">Recently created</string>
+    <string name="projects_title">Projects</string>
+    <string name="project_rename">Rename project</string>
+    <string name="project_delete">Delete project</string>
+    <string name="project_delete_confirm">Delete project "%1$s"? Conversations stay, but are removed from the project.</string>
+    <string name="project_open">Open</string>
+    <string name="project_unassigned">Unassigned</string>
+    <string name="projects_all">All projects</string>
+    <string name="project_new">New project</string>
+    <string name="project_name_label">Project name</string>
+    <string name="project_count">%1$d chats</string>
+    <string name="projects_empty">No projects yet</string>
+    <string name="tags">Tags</string>
+    <string name="rename_conversation">Rename conversation</string>
+    <string name="rename_dialog_message">Enter a new title for this conversation.</string>
+    <string name="title_label">Title</string>
+    <string name="delete_conversation">Delete conversation</string>
+    <string name="delete_confirmation_message">Are you sure you want to delete "%1$s"? This action cannot be undone.</string>
+    <string name="this_conversation">this conversation</string>
+
+    <!-- Tag picker -->
+    <string name="no_tags_yet">No tags yet. Add one below.</string>
+    <string name="add_new_tag">Add new tag</string>
+
+    <!-- Tag filter bar -->
+    <string name="tags_active_count">%1$d tag%2$s active</string>
+
+    <!-- Export format picker -->
+    <string name="export_format">Export format</string>
+    <string name="format_json">JSON</string>
+    <string name="format_json_description">Full data export, can be imported back</string>
+    <string name="format_markdown">Markdown</string>
+    <string name="format_markdown_description">Readable text format</string>
+
+    <!-- Archived conversations screen -->
+    <string name="archived_conversations">Archived Conversations</string>
+    <string name="could_not_load_archived">Could not load archived conversations</string>
+    <string name="no_archived_conversations">No archived conversations</string>
+    <string name="archived_will_appear_here">Archived conversations will appear here</string>
+
+    <!-- Drawer strings (moved from :shared) -->
+    <string name="agents">Agents</string>
+    <string name="cd_collapse_section">Collapse section</string>
+    <string name="cd_expand_section">Expand section</string>
+    <string name="chats">Chats</string>
+    <string name="favorites">Favorites</string>
+    <string name="files">Files</string>
+    <string name="library">Library</string>
+    <string name="no_conversations_found">No conversations found</string>
+    <string name="pinned">Pinned</string>
+    <string name="projects">Projects</string>
+    <string name="search_conversations_placeholder">Search conversations\u2026</string>
+    <string name="settings">Settings</string>
+    <string name="show_less">Show less</string>
+    <string name="show_more">Show more</string>
+    <string name="skills">Skills</string>
+    <string name="accounts">Accounts</string>
+    <string name="add_account">Add account</string>
+    <string name="cd_active_account">Active account</string>
+    <string name="remove">Remove</string>
+    <string name="remove_account">Remove account</string>
+    <string name="remove_account_message">%1$s and its data will be removed from this device. The account on the server is not affected.</string>
+    <string name="remove_account_title">Remove account?</string>
+</resources>

@@ -1,0 +1,100 @@
+package com.garfiec.librechat.core.common.result
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import kotlin.test.fail
+
+class SafeApiCallTest {
+
+    @Test
+    fun safeApiCallReturnsSuccessOnSuccessfulBlock() = runTest {
+        val result = safeApiCall { "hello" }
+        assertIs<Result.Success<String>>(result)
+        assertEquals("hello", result.data)
+    }
+
+    @Test
+    fun safeApiCallReturnsErrorOnException() = runTest {
+        val result = safeApiCall<String> { throw IllegalStateException("boom") }
+        assertIs<Result.Error>(result)
+        assertEquals("boom", result.message)
+        assertIs<IllegalStateException>(result.exception)
+    }
+
+    @Test
+    fun safeApiCallPropagatesCancellation() = runTest {
+        assertFailsWith<CancellationException> {
+            safeApiCall<String> { throw CancellationException("cancelled") }
+        }
+    }
+
+    @Test
+    fun isSuccessReturnsTrueForSuccess() {
+        val result: Result<String> = Result.Success("data")
+        assertTrue(result.isSuccess())
+        assertFalse(result.isError())
+        assertFalse(result.isLoading())
+    }
+
+    @Test
+    fun isErrorReturnsTrueForError() {
+        val result: Result<String> = Result.Error(message = "fail")
+        assertTrue(result.isError())
+        assertFalse(result.isSuccess())
+    }
+
+    @Test
+    fun isLoadingReturnsTrueForLoading() {
+        val result: Result<String> = Result.Loading
+        assertTrue(result.isLoading())
+    }
+
+    @Test
+    fun getOrNullReturnsDataForSuccess() {
+        val result: Result<String> = Result.Success("data")
+        assertEquals("data", result.getOrNull())
+    }
+
+    @Test
+    fun getOrNullReturnsNullForError() {
+        val result: Result<String> = Result.Error(message = "fail")
+        assertNull(result.getOrNull())
+    }
+
+    @Test
+    fun getOrThrowReturnsDataForSuccess() {
+        val result: Result<String> = Result.Success("data")
+        assertEquals("data", result.getOrThrow())
+    }
+
+    @Test
+    fun getOrThrowThrowsForErrorWithException() {
+        val original = IllegalArgumentException("bad arg")
+        val result: Result<String> = Result.Error(original, "bad arg")
+        try {
+            result.getOrThrow()
+            fail("Should have thrown")
+        } catch (e: Exception) {
+            assertSame(original, e)
+        }
+    }
+
+    @Test
+    fun getOrThrowThrowsForLoading() {
+        val result: Result<String> = Result.Loading
+        try {
+            result.getOrThrow()
+            fail("Should have thrown")
+        } catch (e: IllegalStateException) {
+            assertEquals("Result is still loading", e.message)
+        }
+    }
+}

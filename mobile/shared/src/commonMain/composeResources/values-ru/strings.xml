@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Drawer -->
+    <string name="settings">Настройки</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back_to_conversations">Назад к беседам</string>
+
+    <!-- Version mismatch dialog -->
+    <string name="version_mismatch_title">Несоответствие версии бэкенда</string>
+    <string name="version_mismatch_message">Это приложение собрано для LibreChat v%1$s, но ваш сервер работает на v%2$s. Некоторые функции могут работать некорректно.</string>
+    <string name="dismiss">Закрыть</string>
+    <string name="dont_warn_again">Больше не предупреждать</string>
+</resources>

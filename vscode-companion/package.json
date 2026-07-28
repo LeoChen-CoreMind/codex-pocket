@@ -1,0 +1,40 @@
+{
+  "name": "codex-pocket-companion",
+  "displayName": "Codex Pocket Companion",
+  "description": "Binds one VS Code window to Codex Pocket.",
+  "version": "0.1.0",
+  "publisher": "leochen",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Codex Pocket Companion",
+      "properties": {
+        "codexPocket.bridgeUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:47831",
+          "description": "Local Codex Pocket Bridge URL. Only loopback addresses are accepted."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "codexPocket.showInstance",
+        "title": "Codex Pocket: Show Window Instance"
+      },
+      {
+        "command": "codexPocket.stopActiveTurn",
+        "title": "Codex Pocket: Stop Current Task"
+      }
+    ]
+  }
+}

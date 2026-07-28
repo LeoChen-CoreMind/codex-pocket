@@ -1,0 +1,43 @@
+# Editors and OS
+.idea/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+local.properties
+keystore.properties
+*.jks
+*.keystore
+*.pfx
+*.p12
+*.key
+*.token
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Gradle / Kotlin / Android
+.gradle/
+.kotlin/
+**/build/
+*.apk
+*.aab
+
+# .NET and static runtime artifacts
+**/bin/
+**/obj/
+bridge-control/runtime/
+bridge-control/publish*/
+
+# Runtime state
+runtime/
+CodexMobileBridge/
+*.pid

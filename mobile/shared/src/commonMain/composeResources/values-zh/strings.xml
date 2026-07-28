@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Drawer -->
+    <string name="settings">设置</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back_to_conversations">返回对话</string>
+
+    <!-- Version mismatch dialog -->
+    <string name="version_mismatch_title">后端版本不匹配</string>
+    <string name="version_mismatch_message">此应用是为 LibreChat v%1$s 构建的，但你的服务器运行的是 v%2$s。某些功能可能无法正常使用。</string>
+    <string name="dismiss">关闭</string>
+    <string name="dont_warn_again">不再提醒</string>
+</resources>

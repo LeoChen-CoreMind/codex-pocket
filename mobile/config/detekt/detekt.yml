@@ -1,0 +1,184 @@
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    threshold: 300
+    ignoreAnnotated:
+      - "Composable"
+  LongParameterList:
+    functionThreshold: 10
+    constructorThreshold: 20
+    ignoreDefaultParameters: true
+    ignoreAnnotated:
+      - "Composable"
+  TooManyFunctions:
+    thresholdInFiles: 30
+    thresholdInClasses: 100
+    thresholdInInterfaces: 25
+    thresholdInObjects: 20
+    thresholdInEnums: 10
+    ignoreAnnotatedFunctions:
+      - "Preview"
+  NestedBlockDepth:
+    threshold: 6
+  CyclomaticComplexMethod:
+    threshold: 60
+    ignoreAnnotated:
+      - "Composable"
+  ComplexCondition:
+    threshold: 10
+  LargeClass:
+    threshold: 2500
+
+style:
+  MagicNumber:
+    active: false
+  ReturnCount:
+    max: 12
+    excludeReturnFromLambda: true
+    ignoreAnnotated:
+      - "Composable"
+  MaxLineLength:
+    maxLineLength: 140
+    excludeCommentStatements: true
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeRawStrings: true
+    excludes:
+      - "**/build/generated/compose/resourceGenerator/**"
+  ForbiddenComment:
+    active: false
+  UnusedPrivateMember:
+    active: true
+    allowedNames: "(_|ignored|expected|serialVersionUID)"
+    ignoreAnnotated:
+      - "Preview"
+  UnusedPrivateProperty:
+    active: true
+    allowedNames: "(_|ignored|expected|serialVersionUID)"
+  WildcardImport:
+    active: true
+    excludeImports:
+      - "kotlinx.coroutines.flow.*"
+      - "*.resources.*"
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 3
+  ThrowsCount:
+    max: 4
+  UseCheckOrError:
+    active: false
+  UseRequire:
+    active: false
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated:
+      - "Composable"
+    # Detekt's `excludes:` REPLACES (does not merge with) the default value, so
+    # the default test-source exemptions must be repeated here alongside the
+    # generated-resources exclude.
+    excludes:
+      - "**/test/**"
+      - "**/androidTest/**"
+      - "**/commonTest/**"
+      - "**/jvmTest/**"
+      - "**/androidUnitTest/**"
+      - "**/androidInstrumentedTest/**"
+      - "**/jsTest/**"
+      - "**/iosTest/**"
+      - "**/build/generated/compose/resourceGenerator/**"
+  TopLevelPropertyNaming:
+    constantPattern: "[A-Z][A-Za-z0-9_]*"
+  MatchingDeclarationName:
+    active: false
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    exceptionNames:
+      - "RuntimeException"
+      - "Throwable"
+    allowedExceptionNameRegex: "_|(ignore|expected).*"
+  SwallowedException:
+    ignoredExceptionTypes:
+      - "InterruptedException"
+      - "MalformedURLException"
+      - "NumberFormatException"
+      - "ParseException"
+    allowedExceptionNameRegex: "_|(ignore|expected).*"
+  TooGenericExceptionThrown:
+    active: true
+    exceptionNames:
+      - "Error"
+      - "RuntimeException"
+      - "Throwable"
+
+coroutines:
+  active: true
+
+# Allowlist for tree-scoped infrastructure CompositionLocals (chat-session render
+# caches and DataStore-projected user prefs). These match the rule's intended
+# legit-use criteria (tree-scoped, cross-cutting, default or error-on-missing);
+# the screen-specific-ViewModel anti-pattern the rule actually targets is absent
+# from this project.
+Compose:
+  CompositionLocalAllowlist:
+    active: true
+    allowedCompositionLocals: LocalAddArtifactToHomeScreen,LocalAttachmentDownloader,LocalChatMediaViewer,LocalImmediateMarkdown,LocalInlineArtifactPrefs,LocalMermaidRenderCache,LocalOpenArtifact,LocalOpenPdf,LocalParsedMarkdownCache,LocalRelativeTimeReference,LocalSearchFocusNonce,LocalSubagentProgress
+
+# detekt-koin rule overrides (defaults ship in plugin jar; buildUponDefaultConfig = true)
+koin-rules:
+  # Scope "test hygiene" rule to test sources only; the rule's heuristic
+  # ("any class calling startKoin without stopKoin") incorrectly flags
+  # production Application classes otherwise.
+  MissingKoinStopInTest:
+    active: true
+    excludes:
+      - "**/src/main/**"
+      - "**/src/commonMain/**"
+      - "**/src/androidMain/**"
+      - "**/src/iosMain/**"
+  # Project convention is top-level `val xModule = module { }`; rule is a
+  # stylistic preference (defer factory-lambda alloc), not a correctness issue.
+  ModuleAsTopLevelVal:
+    active: false
+  # Path-exclude DataModule.kt only: it intentionally registers multiple
+  # SessionTask implementations bound to SessionTask::class for getAll<SessionTask>()
+  # multi-binding. Rule still active elsewhere to catch accidental same-type binds.
+  DuplicateBindingWithoutQualifier:
+    active: true
+    excludes:
+      - "**/core/data/**/DataModule.kt"
+
+formatting:
+  Indentation:
+    active: false
+  MaximumLineLength:
+    active: false
+  NoWildcardImports:
+    active: false
+  TrailingCommaOnCallSite:
+    active: false
+  TrailingCommaOnDeclarationSite:
+    active: false
+  Wrapping:
+    active: false
+  ArgumentListWrapping:
+    active: false
+  ParameterListWrapping:
+    active: false
+  FunctionSignature:
+    active: false
+  ImportOrdering:
+    excludes:
+      - "**/build/generated/compose/resourceGenerator/**"
+  SpacingAroundParens:
+    excludes:
+      - "**/build/generated/compose/resourceGenerator/**"
+
+# Custom row-tenancy ruleset (:detekt-rules). Enforces that account-scoped Room DAOs filter every
+# tenant-table statement by accountId. See AccountScopedDaoRule.
+librechat:
+  AccountScopedDao:
+    active: true

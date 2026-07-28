@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Drawer -->
+    <string name="settings">الإعدادات</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back_to_conversations">العودة إلى المحادثات</string>
+
+    <!-- Version mismatch dialog -->
+    <string name="version_mismatch_title">عدم تطابق إصدار الخادم</string>
+    <string name="version_mismatch_message">تم إنشاء هذا التطبيق لـ LibreChat v%1$s، لكن خادمك يعمل بالإصدار v%2$s. قد لا تعمل بعض الميزات بشكل صحيح.</string>
+    <string name="dismiss">تجاهل</string>
+    <string name="dont_warn_again">عدم التحذير مرة أخرى</string>
+</resources>

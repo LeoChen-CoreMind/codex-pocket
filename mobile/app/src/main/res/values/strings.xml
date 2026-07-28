@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Codex Pocket</string>
+    <string name="approval_service_active">正在监听 Codex 权限请求</string>
+    <!-- Connectivity -->
+    <string name="no_connection">No internet connection</string>
+</resources>

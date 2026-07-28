@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Server URL -->
+    <string name="server_url_label">IP address and port</string>
+    <string name="server_url_placeholder">192.168.1.97:47831</string>
+    <string name="server_url_connect">Connect</string>
+    <string name="connect_to_librechat">Connect to LibreChat</string>
+    <string name="enter_server_url_hint">Enter the Bridge IP address and port</string>
+    <string name="insecure_connection_title">Insecure connection</string>
+    <string name="insecure_connection_message">You are connecting over HTTP. Your login credentials and messages will be sent unencrypted and could be intercepted by others on the network.\n\nOnly use HTTP for local development servers.</string>
+    <string name="connect_anyway">Connect anyway</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Login -->
+    <string name="login_title">Sign in</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Password</string>
+    <string name="access_token_label">Access token</string>
+    <string name="continue_button">Continue</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="no_account_sign_up">Don't have an account? Sign up</string>
+    <string name="or_continue_with">Or continue with</string>
+
+    <!-- Register -->
+    <string name="register_title">Create account</string>
+    <string name="full_name_label">Full name</string>
+    <string name="username_label">Username</string>
+    <string name="confirm_password_label">Confirm password</string>
+    <string name="sign_up">Sign up</string>
+    <string name="have_account_sign_in">Already have an account? Sign in</string>
+
+    <!-- Forgot Password -->
+    <string name="reset_password_title">Reset password</string>
+    <string name="forgot_your_password">Forgot your password?</string>
+    <string name="enter_email_for_reset">Enter your email to receive a reset link</string>
+    <string name="send_reset_link">Send reset link</string>
+    <string name="check_your_email">Check your email</string>
+    <string name="reset_link_sent">We've sent a password reset link to %1$s</string>
+    <string name="back_to_sign_in">Back to sign in</string>
+
+    <!-- Reset Password -->
+    <string name="reset_password_screen_title">Reset Password</string>
+    <string name="password_reset_successful">Password reset successful</string>
+    <string name="password_reset_message">Your password has been updated. You can now sign in with your new password.</string>
+    <string name="set_new_password">Set new password</string>
+    <string name="enter_new_password_hint">Enter your new password below</string>
+    <string name="new_password_label">New password</string>
+    <string name="confirm_new_password_label">Confirm new password</string>
+    <string name="reset_password_button">Reset password</string>
+
+    <!-- Two-Factor -->
+    <string name="two_factor_title">Two-Factor Authentication</string>
+    <string name="enter_verification_code">Enter verification code</string>
+    <string name="enter_backup_code">Enter backup code</string>
+    <string name="authenticator_prompt">Enter the 6-digit code from your authenticator app</string>
+    <string name="backup_code_prompt">Enter one of your backup codes</string>
+    <string name="verify">Verify</string>
+    <string name="use_authenticator_code">Use authenticator code</string>
+    <string name="use_backup_code">Use backup code</string>
+    <string name="backup_code_label">Backup code</string>
+
+    <!-- Verify Email -->
+    <string name="verify_email_title">Verify Email</string>
+    <string name="verification_link_sent">We've sent a verification link to</string>
+    <string name="click_link_to_verify">Click the link in the email to verify your account.</string>
+    <string name="verification_email_sent">Verification email sent!</string>
+    <string name="resend_verification_email">Resend verification email</string>
+    <string name="resend_in_seconds">Resend in %1$ds</string>
+
+    <!-- Terms -->
+    <string name="terms_title">Terms of Service</string>
+    <string name="i_accept">I Accept</string>
+    <string name="retry">Retry</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+</resources>

@@ -1,0 +1,38 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+local.properties
+
+# Kotlin
+.kotlin/
+
+# Android
+*.apk
+*.aab
+*.dex
+*.class
+
+# Keystore
+*.jks
+*.keystore
+# Release signing credentials (never commit)
+keystore.properties
+*.b64
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local Claude Code working notes (issue repros, scratch captures with secrets)
+.claude/issue-*/
+.claude/inline-artifacts/
+.claude/worktrees/
+.claude/sync-upstream/
+# Ephemeral runtime state from Claude Code's scheduler (per-session lock)
+.claude/scheduled_tasks.lock
+.claude/*.lock

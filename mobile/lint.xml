@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Stability of kotlin.collections.List/Set/Map is handled via compose-stability.conf
+         at the compiler level, so compose-lint-checks warnings are false positives. -->
+    <issue id="ComposeUnstableCollections" severity="ignore" />
+
+    <!-- VectorPath warnings for brand icons (OpenAI, Bedrock) — these are externally-sourced
+         SVG paths that cannot be simplified without visual degradation. -->
+    <issue id="VectorPath" severity="ignore" />
+
+    <!-- PluralsCandidate: cosmetic suggestion to use plural resources. Strings work correctly
+         as-is and converting requires call-site changes across the codebase. -->
+    <issue id="PluralsCandidate" severity="ignore" />
+
+    <!-- ConfigurationScreenWidthHeight: recommends LocalWindowInfo over Configuration.screenWidthDp.
+         LocalWindowInfo is a newer API; the current usage works correctly. -->
+    <issue id="ConfigurationScreenWidthHeight" severity="ignore" />
+
+    <!-- GradleDependency: newer versions available — handled by Dependabot. -->
+    <issue id="GradleDependency" severity="ignore" />
+
+    <!-- StaticFieldLeak: false positive for ViewModels with Koin-injected Application context.
+         Lint sees a Context-subtype field in a non-Android-component class but these are
+         Application-scoped and do not leak Activity references. -->
+    <issue id="StaticFieldLeak" severity="ignore" />
+</lint>

@@ -1,0 +1,154 @@
+package com.garfiec.librechat.core.data.repository
+
+import co.touchlab.kermit.Logger
+import com.garfiec.librechat.core.common.identity.AccountId
+import com.garfiec.librechat.core.common.identity.ActiveAccountProvider
+import com.garfiec.librechat.core.common.identity.currentAccountId
+import com.garfiec.librechat.core.common.identity.flatMapAccountOrEmpty
+import com.garfiec.librechat.core.common.result.Result
+import com.garfiec.librechat.core.common.result.safeApiCall
+import com.garfiec.librechat.core.data.datastore.AccountRoster
+import com.garfiec.librechat.core.data.db.dao.MessageDao
+import com.garfiec.librechat.core.data.mapper.toEntity
+import com.garfiec.librechat.core.data.mapper.toModels
+import com.garfiec.librechat.core.model.Message
+import com.garfiec.librechat.core.model.request.BranchMessageRequest
+import com.garfiec.librechat.core.model.request.UpdateMessageRequest
+import com.garfiec.librechat.core.network.api.MessagesApi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+
+class MessageRepositoryImpl(
+    private val messagesApi: MessagesApi,
+    private val messageDao: MessageDao,
+    private val activeAccountProvider: ActiveAccountProvider,
+    private val roster: AccountRoster,
+    private val dispatcher: CoroutineDispatcher,
+) : MessageRepository {
+
+    override fun observeMessages(conversationId: String): Flow<List<Message>> =
+        activeAccountProvider.flatMapAccountOrEmpty(emptyList<Message>()) { account ->
+            messageDao.observeMessagesForAccount(conversationId, account.value)
+                .map { entities -> entities.toModels() }
+        }.flowOn(dispatcher)
+
+    override suspend fun getMessages(conversationId: String): Result<List<Message>> {
+        val result = safeApiCall {
+            // Capture identity before the network suspend so an in-flight account switch can't
+            // mis-attribute these rows; skip caching when unresolved rather than stamping a null orphan.
+            val accountId = activeAccountProvider.currentAccountId()?.value
+            val messages = messagesApi.getMessages(conversationId)
+            if (accountId != null) {
+                messageDao.replaceAllForConversation(conversationId, accountId, messages.entitiesFor(accountId))
+            }
+            messages
+        }
+
+        // On network failure, fall back to cached messages for the active account only.
+        if (result is Result.Error) {
+            val account = activeAccountProvider.currentAccountId()
+            val cached = account
+                ?.let { messageDao.observeMessagesForAccount(conversationId, it.value).first() }
+                ?: emptyList()
+            if (cached.isNotEmpty()) {
+                Logger.d { "Using cached messages for $conversationId (network unavailable)" }
+                return Result.Success(cached.toModels())
+            }
+        }
+        return result
+    }
+
+    override suspend fun getMessagePage(
+        conversationId: String,
+        cursor: String?,
+        limit: Int,
+    ): Result<MessagePage> = safeApiCall {
+        val accountId = activeAccountProvider.currentAccountId()?.value
+        val page = messagesApi.getMessagePage(conversationId, cursor, limit)
+        if (accountId != null) {
+            val entities = page.messages.entitiesFor(accountId)
+            if (cursor == null) {
+                messageDao.replaceAllForConversation(conversationId, accountId, entities)
+            } else {
+                messageDao.upsertAll(entities)
+            }
+        }
+        MessagePage(
+            messages = page.messages,
+            nextCursor = page.nextCursor,
+            backwardsCursor = page.backwardsCursor,
+        )
+    }
+
+    override suspend fun cacheMessages(messages: List<Message>, originAccount: AccountId?) {
+        if (messages.isEmpty()) return
+        // Origin-capture: stamp the account that started the stream (threaded from send time), so a
+        // finalize landing after a switch attributes to it — not the live active account. Skip when
+        // unresolved (warming / logged out) or when the origin account was removed since capture: a
+        // null-stamped row is invisible to every account-filtered read and unreapable by the scoped
+        // logout purge, and resurrecting a removed account's rows would leak purged data.
+        val accountId = resolveWriteAccountId(originAccount, activeAccountProvider, roster) ?: return
+        messageDao.upsertAll(messages.entitiesFor(accountId))
+    }
+
+    override suspend fun refreshMessages(conversationId: String): Result<List<Message>> {
+        return safeApiCall {
+            val accountId = activeAccountProvider.currentAccountId()?.value
+            val messages = messagesApi.getMessages(conversationId)
+            if (accountId != null) {
+                // The bridge endpoint returns only the newest page. Preserve pages already loaded
+                // above it, otherwise a live refresh creates a gap between the cache and cursor.
+                messageDao.upsertAll(messages.entitiesFor(accountId))
+            }
+            messages
+        }
+    }
+
+    override suspend fun updateFeedback(
+        conversationId: String,
+        messageId: String,
+        feedback: String?,
+    ): Result<Unit> {
+        return safeApiCall {
+            val accountId = activeAccountProvider.currentAccountId()?.value
+            messagesApi.updateFeedback(conversationId, messageId, feedback)
+            // Update local cache, scoped to the active account; skip when unresolved.
+            if (accountId != null) messageDao.updateFeedback(messageId, feedback, accountId)
+        }
+    }
+
+    override suspend fun updateMessageText(
+        conversationId: String,
+        messageId: String,
+        text: String,
+    ): Result<Unit> {
+        return safeApiCall {
+            val accountId = activeAccountProvider.currentAccountId()?.value
+            messagesApi.updateMessage(conversationId, messageId, UpdateMessageRequest(text = text))
+            if (accountId != null) messageDao.updateText(messageId, text, accountId)
+        }
+    }
+
+    override suspend fun branchMessage(
+        conversationId: String,
+        messageId: String,
+        agentId: String?,
+    ): Result<Message> {
+        return safeApiCall {
+            messagesApi.branchMessage(
+                BranchMessageRequest(
+                    conversationId = conversationId,
+                    messageId = messageId,
+                    agentId = agentId,
+                ),
+            )
+        }
+    }
+
+    // Maps server messages to entities stamped with the account captured at request time.
+    private fun List<Message>.entitiesFor(accountId: String) =
+        map { it.toEntity().copy(accountId = accountId) }
+}
