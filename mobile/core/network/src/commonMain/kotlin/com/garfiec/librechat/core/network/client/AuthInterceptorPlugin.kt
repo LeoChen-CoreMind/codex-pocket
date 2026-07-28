@@ -131,6 +131,19 @@ class AuthInterceptorPlugin private constructor(
                     return@intercept originalCall
                 }
 
+                // A request captured while no account or bearer existed is expected to receive
+                // 401 from authenticated endpoints. It has no session to refresh or expire. This
+                // also prevents a slow pre-login request from resetting navigation after the user
+                // has already advanced to the access-token screen.
+                val wasUnauthenticated = if (snapshot != null) {
+                    snapshot.accountId == null && snapshot.bearer == null
+                } else {
+                    plugin.tokenManager.getAccessToken() == null
+                }
+                if (wasUnauthenticated) {
+                    return@intercept originalCall
+                }
+
                 // Session-expiry emissions below are scoped to the snapshot's account: a straggler
                 // request of a switched-away (retained, still-valid-in-roster) account must not tear
                 // down the live account's session over its own dead credentials.

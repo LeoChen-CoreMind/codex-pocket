@@ -4,7 +4,7 @@
     <string name="server_url_label">IP 地址和端口</string>
     <string name="server_url_placeholder">192.168.1.97:47831</string>
     <string name="server_url_connect">连接</string>
-    <string name="connect_to_librechat">连接到 LibreChat</string>
+    <string name="connect_to_librechat">连接到 Codex Pocket</string>
     <string name="enter_server_url_hint">输入 Bridge 的局域网 IP 地址和端口</string>
     <string name="insecure_connection_title">不安全的连接</string>
     <string name="insecure_connection_message">你正在通过 HTTP 连接。你的登录凭据和消息将以未加密方式发送，可能被网络上的其他人截获。\n\n仅在本地开发服务器上使用 HTTP。</string>

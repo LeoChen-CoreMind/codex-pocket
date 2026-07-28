@@ -1,25 +1,27 @@
-# Codex Pocket 截图
+# README 展示图片上传说明
 
-把真实产品截图放在本目录，文件名固定如下：
+根目录 `README.md` 已经直接引用本目录中的五张图片。只要按下面的固定文件名上传，GitHub 项目首页就会自动显示图片，客户不需要进入本目录查看。
 
-- `online-sessions.png`：在线列表同时显示 VS Code、Cursor 或 Antigravity 多窗口。
-- `chat-control.png`：展示消息、思考、工具调用、排队项“引导”按钮和实时停止。
-- `approval.png`：展示位于对话时间线内的计划确认或权限审批。
-- `mcp-dialog.png`：展示 Markdown、图片、选项和自由文本响应。
-- `server-console.png`：展示 Windows Bridge 控制器完整状态。
+| 文件名 | README 展示位置 | 建议内容 |
+| --- | --- | --- |
+| `online-sessions.png` | 第一排左侧 | 在线列表，同时展示编辑器名称、窗口和工作区 |
+| `chat-control.png` | 第一排中间 | 对话时间线、输入框、发送/停止以及队列或引导操作 |
+| `approval.png` | 第一排右侧 | 计划确认、命令审批或权限审批 |
+| `mcp-dialog.png` | 第二排 | MCP Markdown、图片、选择项或自由文本交互 |
+| `server-console.png` | 第三排大图 | Windows Bridge 控制器的完整状态界面 |
 
-建议手机截图使用 1080 x 2400 PNG，控制器截图使用原始窗口大小 PNG。上传前必须隐藏 Token、局域网 IP、用户名、绝对路径、私人会话、工作区名称和未公开项目名。
+建议规格：
 
-五张图片就位后，可在根 `README.md` 的“软件截图”标题下加入：
+- 手机截图使用纵向 PNG，推荐 `1080 x 2400`，三张第一排图片尽量保持相同尺寸。
+- `mcp-dialog.png` 可使用完整手机纵向截图。
+- Windows 控制器使用原始窗口比例，文字应当清晰可读。
+- 文件扩展名必须是小写 `.png`，名称必须与表格完全一致。
 
-```html
-<p align="center">
-  <img src="docs/screenshots/online-sessions.png" width="260" alt="在线会话">
-  <img src="docs/screenshots/chat-control.png" width="260" alt="实时对话控制">
-  <img src="docs/screenshots/approval.png" width="260" alt="移动审批">
-</p>
-<p align="center">
-  <img src="docs/screenshots/mcp-dialog.png" width="260" alt="MCP 对话">
-  <img src="docs/screenshots/server-console.png" width="520" alt="Bridge 控制器">
-</p>
-```
+上传前必须遮挡或替换以下信息：
+
+- Bridge 访问密钥和 MCP Bearer Token
+- 局域网 IP、公网地址和 FRP 配置
+- Windows 用户名、绝对路径和设备名称
+- 私人会话内容、私有仓库名称和未公开工作区名称
+
+上传后直接访问仓库首页检查图片排版即可，不需要修改根目录 README。

@@ -134,8 +134,6 @@ actual fun ChatScreen(
     val showAvatars = prefs.showAvatars
     val showBubbles = prefs.showBubbles
     val useKatex = prefs.latexRenderer == LatexRenderer.KATEX
-    val sttEngine = prefs.sttEngine
-    val sttLanguage = prefs.sttLanguage
     val keyboardController = LocalSoftwareKeyboardController.current
     val fontSizeMultiplier = when (uiState.chatFontSize) {
         ChatFontSize.SMALL -> 0.85f
@@ -155,14 +153,6 @@ actual fun ChatScreen(
         selectedEndpoint = uiState.selectedEndpoint,
         selectedModel = uiState.selectedModel,
         agents = uiState.agents,
-    )
-
-    val onStartRecordingWithPermission = rememberChatStartRecording(
-        viewModel = viewModel,
-        sttEngine = sttEngine,
-        sttLanguage = sttLanguage,
-        snackbarHostState = snackbarHostState,
-        coroutineScope = coroutineScope,
     )
 
     // Options sheet ("+" menu, model selector/parameters as pages). Opened from the composer's "+"
@@ -464,10 +454,6 @@ actual fun ChatScreen(
                 promptSuggestions = uiState.availablePrompts,
                 onPromptSelected = viewModel::handlePromptMention,
                 onSlashCommandSelected = viewModel::handleSlashCommand,
-                isRecording = uiState.isRecording,
-                isTranscribing = uiState.isTranscribing,
-                onStartRecording = onStartRecordingWithPermission,
-                onStopRecording = viewModel::stopRecording,
                 enabledTools = uiState.effectiveEnabledTools,
                 pinnedToolKeys = uiState.pinnedToolChips,
                 onToggleTool = viewModel::toggleTool,

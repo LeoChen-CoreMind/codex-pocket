@@ -116,6 +116,7 @@ private fun McpDialogSettingsDialog(
                 Text("局域网地址", style = MaterialTheme.typography.titleSmall)
                 val currentPort = portText.toIntOrNull() ?: config?.port ?: 47832
                 val addresses = config?.addresses.orEmpty()
+                val preferredUrl = addresses.firstOrNull()?.let { "http://$it:$currentPort/mcp" }
                 if (addresses.isEmpty()) {
                     Text("未检测到局域网 IPv4 地址", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
@@ -128,8 +129,8 @@ private fun McpDialogSettingsDialog(
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
-                        onClick = { config?.url?.let { copyToClipboard(it, "MCP URL") } },
-                        enabled = config?.url != null,
+                        onClick = { preferredUrl?.let { copyToClipboard(it, "MCP URL") } },
+                        enabled = preferredUrl != null,
                         modifier = Modifier.weight(1f),
                     ) { Text("复制地址") }
                     OutlinedButton(

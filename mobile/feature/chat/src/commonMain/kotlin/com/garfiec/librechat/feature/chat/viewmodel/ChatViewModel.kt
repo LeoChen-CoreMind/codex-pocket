@@ -1079,6 +1079,22 @@ class ChatViewModel(
         }
         viewModelScope.launch(defaultDispatcher) {
             runCatching { threadControlApi.steerQueued(conversationId, localId, expectedTurnId) }
+                .mapCatching { firstResult ->
+                    if (firstResult.steered || firstResult.reason != "turn_changed") {
+                        firstResult
+                    } else {
+                        val activity = threadControlApi.activity(conversationId)
+                        applyThreadActivity(activity)
+                        val currentTurnId = activity.turnId
+                        if (activity.active && activity.source == "pocket" && activity.steerable &&
+                            currentTurnId != null && currentTurnId != expectedTurnId
+                        ) {
+                            threadControlApi.steerQueued(conversationId, localId, currentTurnId)
+                        } else {
+                            firstResult
+                        }
+                    }
+                }
                 .onSuccess { result ->
                     if (!result.steered) {
                         _uiState.update { it.copy(error = "转为引导失败，消息仍保留在队列中：${result.reason}") }
@@ -1500,11 +1516,14 @@ class ChatViewModel(
             var consumeRemoteTurn = false
             runCatching { threadControlApi.activity(conversationId) }
                 .onSuccess { activity ->
-                    applyThreadActivity(activity, preserveLocalActive = isHandedOffNewChat && !activity.active)
+                    val localStreamOwnsTurn = _uiState.value.isStreaming && !_uiState.value.remoteTurnActive
+                    applyThreadActivity(
+                        activity,
+                        preserveLocalActive = isHandedOffNewChat && !activity.active,
+                        markRemoteActive = activity.active && !localStreamOwnsTurn,
+                    )
                     remoteTurnId = activity.turnId
-                    if (activity.active) {
-                        consumeRemoteTurn = true
-                    }
+                    consumeRemoteTurn = activity.active && !localStreamOwnsTurn
                 }
             while (currentCoroutineContext().isActive) {
                 try {
@@ -1518,12 +1537,18 @@ class ChatViewModel(
                         when (event.type) {
                             "thread.activity.updated" -> if (payload != null) {
                                 val activity = json.decodeFromJsonElement<ThreadActivityDto>(payload)
-                                applyThreadActivity(activity)
+                                val localStreamOwnsTurn = _uiState.value.isStreaming &&
+                                    !_uiState.value.remoteTurnActive && !consumeRemoteTurn
+                                if (activity.active && !localStreamOwnsTurn) consumeRemoteTurn = true
+                                applyThreadActivity(activity, markRemoteActive = consumeRemoteTurn)
                                 remoteTurnId = activity.turnId
                                 if (!activity.active) consumeRemoteTurn = false
                             }
                             "queue.updated" -> {
-                                applyThreadActivity(threadControlApi.activity(conversationId))
+                                applyThreadActivity(
+                                    threadControlApi.activity(conversationId),
+                                    markRemoteActive = consumeRemoteTurn,
+                                )
                             }
                             "turn.started" -> {
                                 val eventTurnId = payload?.get("turnId")?.jsonPrimitive?.contentOrNull
@@ -1620,9 +1645,14 @@ class ChatViewModel(
         }
     }
 
-    private fun applyThreadActivity(activity: ThreadActivityDto, preserveLocalActive: Boolean = false) {
+    private fun applyThreadActivity(
+        activity: ThreadActivityDto,
+        preserveLocalActive: Boolean = false,
+        markRemoteActive: Boolean? = null,
+    ) {
         _uiState.update { state ->
             val projectedQueue = activity.queue.map { it.toProjectedQueueMessage(state) }
+            val shouldMarkRemoteActive = markRemoteActive ?: !(state.isStreaming && !state.remoteTurnActive)
             state.copy(
                 queue = state.queue.copy(
                     messageQueue = projectedQueue,
@@ -1633,7 +1663,8 @@ class ChatViewModel(
                 ),
                 content = state.content.copy(
                     isStreaming = activity.active || (preserveLocalActive && state.isStreaming),
-                    remoteTurnActive = activity.active || (preserveLocalActive && state.remoteTurnActive),
+                    remoteTurnActive = (activity.active && shouldMarkRemoteActive) ||
+                        (preserveLocalActive && state.remoteTurnActive),
                     remoteTurnId = activity.turnId ?: state.remoteTurnId.takeIf { preserveLocalActive },
                 ),
             )

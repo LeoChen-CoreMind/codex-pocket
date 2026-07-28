@@ -4,7 +4,7 @@
     <string name="server_url_label">URL do servidor</string>
     <string name="server_url_placeholder">https://seu-servidor.com</string>
     <string name="server_url_connect">Conectar</string>
-    <string name="connect_to_librechat">Conectar ao LibreChat</string>
+    <string name="connect_to_librechat">Conectar ao Codex Pocket</string>
     <string name="enter_server_url_hint">Digite a URL do seu servidor para começar</string>
     <string name="insecure_connection_title">Conexão insegura</string>
     <string name="insecure_connection_message">Você está se conectando por HTTP. Suas credenciais de login e mensagens serão enviadas sem criptografia e poderão ser interceptadas por outras pessoas na rede.\n\nUse HTTP apenas para servidores de desenvolvimento local.</string>

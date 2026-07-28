@@ -4,7 +4,7 @@
     <string name="server_url_label">서버 URL</string>
     <string name="server_url_placeholder">https://your-server.com</string>
     <string name="server_url_connect">연결</string>
-    <string name="connect_to_librechat">LibreChat에 연결</string>
+    <string name="connect_to_librechat">Codex Pocket에 연결</string>
     <string name="enter_server_url_hint">시작하려면 서버 URL을 입력하세요</string>
     <string name="insecure_connection_title">안전하지 않은 연결</string>
     <string name="insecure_connection_message">HTTP로 연결하고 있습니다. 로그인 자격 증명과 메시지가 암호화되지 않은 채 전송되어 네트워크상의 다른 사람에게 가로채일 수 있습니다.\n\nHTTP는 로컬 개발 서버에만 사용하세요.</string>

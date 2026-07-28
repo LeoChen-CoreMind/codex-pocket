@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -296,34 +295,6 @@ fun SendStopButton(
     onCancelPendingSend: () -> Unit = {},
     canStop: Boolean = true,
 ) {
-    if (isStreaming && !isEditingQueued && !isAwaitingUploadSend) {
-        Row {
-            IconButton(
-                onClick = onQueue,
-                modifier = Modifier.size(56.dp),
-                enabled = canQueue,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Send, stringResource(Res.string.cd_add_to_queue))
-            }
-            Spacer(Modifier.width(8.dp))
-            IconButton(
-                onClick = onStop,
-                modifier = Modifier.size(56.dp),
-                enabled = canStop,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                ),
-            ) {
-                Icon(Icons.Default.Stop, stringResource(Res.string.cd_stop_generation))
-            }
-        }
-        return
-    }
     val mode = when {
         isEditingQueued -> SendButtonMode.UPDATE
         // A send parked behind an in-flight upload only takes over the button when NOT streaming —
@@ -395,6 +366,7 @@ fun SendStopButton(
             SendButtonMode.STOP -> IconButton(
                 onClick = onStop,
                 modifier = Modifier.size(56.dp),
+                enabled = canStop,
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
@@ -421,7 +393,7 @@ fun SendStopButton(
                 ),
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = stringResource(Res.string.cd_add_to_queue),
                 )
             }

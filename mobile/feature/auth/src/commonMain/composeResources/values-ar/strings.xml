@@ -4,7 +4,7 @@
     <string name="server_url_label">رابط الخادم</string>
     <string name="server_url_placeholder">https://your-server.com</string>
     <string name="server_url_connect">اتصال</string>
-    <string name="connect_to_librechat">الاتصال بـ LibreChat</string>
+    <string name="connect_to_librechat">الاتصال بـ Codex Pocket</string>
     <string name="enter_server_url_hint">أدخل رابط خادمك للبدء</string>
     <string name="insecure_connection_title">اتصال غير آمن</string>
     <string name="insecure_connection_message">أنت تتصل عبر HTTP. سيتم إرسال بيانات تسجيل الدخول والرسائل الخاصة بك دون تشفير وقد يعترضها آخرون على الشبكة.\n\nاستخدم HTTP فقط لخوادم التطوير المحلية.</string>

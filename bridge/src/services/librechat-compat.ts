@@ -1046,6 +1046,7 @@ export function registerLibreChatCompat(
     if (!stream) return;
     if (event.type === "message.started" || event.type === "message.completed") {
       const record = event.payload as ChatRecord;
+      if (record.role === "user") return;
       stream.itemPhases.set(record.itemId, record.phase);
       if (record.phase === "commentary") {
         stream.thinkingByItem.set(record.itemId, record.text);

@@ -4,7 +4,7 @@
     <string name="server_url_label">IP address and port</string>
     <string name="server_url_placeholder">192.168.1.97:47831</string>
     <string name="server_url_connect">Connect</string>
-    <string name="connect_to_librechat">Connect to LibreChat</string>
+    <string name="connect_to_librechat">Connect to Codex Pocket</string>
     <string name="enter_server_url_hint">Enter the Bridge IP address and port</string>
     <string name="insecure_connection_title">Insecure connection</string>
     <string name="insecure_connection_message">You are connecting over HTTP. Your login credentials and messages will be sent unencrypted and could be intercepted by others on the network.\n\nOnly use HTTP for local development servers.</string>

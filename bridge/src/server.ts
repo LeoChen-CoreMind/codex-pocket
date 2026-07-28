@@ -178,11 +178,13 @@ export async function buildServer(
     codexBinary: config.codexBin
   }));
 
-  app.get("/api/mcp-dialog/config", async () => mcpDialogs.status());
+  app.get("/api/mcp-dialog/config", async (request) =>
+    mcpDialogs.status(request.hostname || request.raw.socket.localAddress || null)
+  );
 
   app.put("/api/mcp-dialog/config", async (request) => {
     const body = mcpDialogConfigSchema.parse(request.body);
-    return mcpDialogs.configure(body);
+    return mcpDialogs.configure(body, request.hostname || request.raw.socket.localAddress || null);
   });
 
   app.get("/api/mcp-dialog/requests", async () => ({ data: mcpDialogs.listPending() }));

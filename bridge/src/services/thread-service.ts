@@ -260,8 +260,9 @@ export class ThreadService {
       enqueuedAt: Date.now()
     };
 
+    const pocketActive = this.isPocketTurn(runtime);
     const desktopActive = this.isDesktopThreadActive(input.threadId);
-    if (input.deliveryMode === "steer" && runtime.activeTurnId) {
+    if (input.deliveryMode === "steer" && runtime.activeTurnId && pocketActive) {
       if (!input.expectedTurnId || input.expectedTurnId !== runtime.activeTurnId) {
         const queued = this.enqueueMessage(input.threadId, runtime, message);
         return { ...queued, fallbackReason: "turn_changed" };
@@ -290,7 +291,7 @@ export class ThreadService {
     }
     if (runtime.activeTurnId || runtime.starting || desktopActive) {
       const queued = this.enqueueMessage(input.threadId, runtime, message);
-      return input.deliveryMode === "steer" && desktopActive
+      return input.deliveryMode === "steer" && (desktopActive || Boolean(runtime.activeTurnId && !pocketActive))
         ? { ...queued, fallbackReason: "desktop_active" }
         : queued;
     }
@@ -311,6 +312,9 @@ export class ThreadService {
     if (!runtime.activeTurnId) {
       return { interrupted: false, source: this.isDesktopThreadActive(threadId) ? "desktop" : null };
     }
+    if (!this.isPocketTurn(runtime)) {
+      return { interrupted: false, source: "desktop" };
+    }
     if (!expectedTurnId || expectedTurnId !== runtime.activeTurnId) {
       return { interrupted: false, stale: true, source: "pocket" };
     }
@@ -330,13 +334,14 @@ export class ThreadService {
 
   getActivity(threadId: string): ThreadActivity {
     const runtime = this.runtime(threadId);
-    const pocketActive = Boolean(runtime.activeTurnId || runtime.starting);
+    const pocketActive = this.isPocketTurn(runtime);
+    const foreignTurnActive = Boolean(runtime.activeTurnId && !pocketActive);
     const desktopActive = this.isDesktopThreadActive(threadId);
     return {
-      active: pocketActive || desktopActive,
+      active: pocketActive || foreignTurnActive || desktopActive,
       turnId: runtime.activeTurnId,
-      source: pocketActive ? "pocket" : desktopActive ? "desktop" : null,
-      steerable: Boolean(runtime.activeTurnId),
+      source: pocketActive ? "pocket" : foreignTurnActive || desktopActive ? "desktop" : null,
+      steerable: Boolean(runtime.activeTurnId && pocketActive),
       queuePaused: runtime.queuePaused,
       queue: [...runtime.queue]
     };
@@ -371,7 +376,7 @@ export class ThreadService {
     const runtime = await this.ensureResumed(threadId);
     const index = runtime.queue.findIndex((message) => message.clientMessageId === clientMessageId);
     if (index < 0) return { steered: false, reason: "message_missing" };
-    if (!runtime.activeTurnId || runtime.activeTurnId !== expectedTurnId || this.isDesktopThreadActive(threadId)) {
+    if (!runtime.activeTurnId || runtime.activeTurnId !== expectedTurnId || !this.isPocketTurn(runtime)) {
       return { steered: false, reason: "turn_changed" };
     }
     const steeringKey = `${threadId}:${clientMessageId}`;
@@ -499,6 +504,13 @@ export class ThreadService {
 
   private isDesktopThreadActive(threadId: string): boolean {
     return [...(this.desktopActivities.get(threadId)?.values() ?? [])].some((activity) => activity.active);
+  }
+
+  private isPocketTurn(runtime: RuntimeThread): boolean {
+    return Boolean(
+      runtime.starting ||
+      (runtime.activeTurnId && this.turnMessages.has(runtime.activeTurnId))
+    );
   }
 
   private turnInput(message: QueuedMessage): Array<Record<string, unknown>> {

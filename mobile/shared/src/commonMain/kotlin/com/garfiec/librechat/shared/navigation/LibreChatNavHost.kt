@@ -151,7 +151,10 @@ fun LibreChatNavHost(
     // Handle session expiry
     LaunchedEffect(Unit) {
         navHostViewModel.sessionExpired.collect {
-            navigator.navigateToAuth()
+            // Repeated/stale expiry signals must not reset an authentication flow already in
+            // progress. The user can keep entering the server address or access token without
+            // being bounced back to the first screen until the originating requests finish.
+            if (!navigator.isInAuthFlow) navigator.navigateToAuth()
         }
     }
 

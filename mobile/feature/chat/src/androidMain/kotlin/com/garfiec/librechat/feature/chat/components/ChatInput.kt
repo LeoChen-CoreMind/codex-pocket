@@ -87,10 +87,6 @@ fun ChatInput(
     promptSuggestions: List<PromptMentionDisplayData> = emptyList(),
     onPromptSelected: (PromptMentionDisplayData) -> Unit = {},
     onSlashCommandSelected: (PromptMentionDisplayData) -> Unit = {},
-    isRecording: Boolean = false,
-    isTranscribing: Boolean = false,
-    onStartRecording: () -> Unit = {},
-    onStopRecording: () -> Unit = {},
     onImagePasted: ((Uri) -> Unit)? = null,
     enabledTools: Set<String> = emptySet(),
     onToggleTool: (String) -> Unit = {},
@@ -108,9 +104,6 @@ fun ChatInput(
     val cdOpenToolsMenu = stringResource(Res.string.cd_open_tools_menu)
     val cdPasteImage = stringResource(Res.string.cd_paste_image)
     val cdMessageInput = stringResource(Res.string.cd_message_input)
-    val cdStopVoiceRec = stringResource(Res.string.cd_stop_voice_recording)
-    val cdStartVoiceRec = stringResource(Res.string.cd_start_voice_recording)
-
     val focusRequester = remember { FocusRequester() }
 
     // Use TextFieldValue internally so we can control cursor position.
@@ -157,8 +150,8 @@ fun ChatInput(
     val state = ChatInputState(
         inputText = inputText,
         isStreaming = isStreaming,
-        isRecording = isRecording,
-        isTranscribing = isTranscribing,
+        isRecording = false,
+        isTranscribing = false,
         enabledTools = enabledTools,
         pinnedToolKeys = pinnedToolKeys,
         mcpServers = mcpServers,
@@ -270,7 +263,7 @@ fun ChatInput(
                         },
                     placeholder = {
                         ChatInputPlaceholder(
-                            isRecording = isRecording,
+                            isRecording = false,
                             selectedModelDisplay = selectedModelDisplay,
                         )
                     },
@@ -280,33 +273,6 @@ fun ChatInput(
                     keyboardOptions = ChatInputDefaults.keyboardOptions,
                     keyboardActions = KeyboardActions.Default,
                     maxLines = 6,
-                    trailingIcon = {
-                        IconButton(
-                            onClick = {
-                                if (isRecording) {
-                                    onStopRecording()
-                                } else {
-                                    onStartRecording()
-                                }
-                            },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .semantics {
-                                    contentDescription = if (isRecording) {
-                                        cdStopVoiceRec
-                                    } else {
-                                        cdStartVoiceRec
-                                    }
-                                    role = Role.Button
-                                },
-                            enabled = !isTranscribing,
-                        ) {
-                            VoiceMicIndicator(
-                                isRecording = isRecording,
-                                isTranscribing = isTranscribing,
-                            )
-                        }
-                    },
                 )
 
                 // @mention dropdown

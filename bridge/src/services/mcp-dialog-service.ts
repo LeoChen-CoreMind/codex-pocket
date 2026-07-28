@@ -58,8 +58,8 @@ export class McpDialogService {
     if (this.settings.enabled) await this.startListener(this.settings.port);
   }
 
-  status(): McpDialogSettings & { running: boolean; addresses: string[]; url: string | null; prompt: string } {
-    const addresses = this.lanAddresses();
+  status(preferredAddress: string | null = null): McpDialogSettings & { running: boolean; addresses: string[]; url: string | null; prompt: string } {
+    const addresses = this.lanAddresses(preferredAddress);
     const url = this.settings.enabled && addresses[0]
       ? `http://${addresses[0]}:${this.settings.port}/mcp`
       : null;
@@ -72,13 +72,16 @@ export class McpDialogService {
     };
   }
 
-  async configure(settings: McpDialogSettings): Promise<ReturnType<McpDialogService["status"]>> {
+  async configure(
+    settings: McpDialogSettings,
+    preferredAddress: string | null = null
+  ): Promise<ReturnType<McpDialogService["status"]>> {
     if (!Number.isInteger(settings.port) || settings.port < 1024 || settings.port > 65535) {
       throw new Error("MCP dialog port must be between 1024 and 65535");
     }
     if (settings.enabled && !this.apiToken) throw new Error("Bridge API token is required for LAN MCP dialog");
     const previous = this.settings;
-    if (previous.enabled === settings.enabled && previous.port === settings.port) return this.status();
+    if (previous.enabled === settings.enabled && previous.port === settings.port) return this.status(preferredAddress);
     this.rejectPending(new Error("MCP dialog service configuration changed"));
     await this.stopListener();
     try {
@@ -86,7 +89,7 @@ export class McpDialogService {
       if (settings.enabled) await this.startListener(settings.port);
       this.persistSettings();
       this.events.publish("mcp.dialog.config.updated", null, this.status());
-      return this.status();
+      return this.status(preferredAddress);
     } catch (error) {
       this.settings = previous;
       if (previous.enabled) await this.startListener(previous.port).catch(() => {});
@@ -264,11 +267,37 @@ export class McpDialogService {
     ].join("\n\n");
   }
 
-  private lanAddresses(): string[] {
-    return Object.values(networkInterfaces()).flatMap((entries) => entries ?? [])
-      .filter((entry) => entry.family === "IPv4" && !entry.internal)
-      .map((entry) => entry.address)
-      .filter((address, index, all) => all.indexOf(address) === index);
+  private lanAddresses(preferredAddress: string | null): string[] {
+    const preferred = this.normalizeAddress(preferredAddress ?? "");
+    return Object.entries(networkInterfaces())
+      .flatMap(([name, entries]) => (entries ?? []).map((entry) => ({ name, entry })))
+      .filter(({ entry }) => entry.family === "IPv4" && !entry.internal && this.isLanAddress(entry.address))
+      .map(({ name, entry }) => ({ name, address: entry.address }))
+      .filter((value, index, all) => all.findIndex((candidate) => candidate.address === value.address) === index)
+      .sort((left, right) =>
+        this.addressPriority(right.name, right.address, preferred) -
+        this.addressPriority(left.name, left.address, preferred)
+      )
+      .map(({ address }) => address);
+  }
+
+  private addressPriority(name: string, address: string, preferred: string): number {
+    if (address === preferred) return 10_000;
+    let score = address.startsWith("192.168.") ? 300 : address.startsWith("10.") ? 200 : 100;
+    if (/wi-?fi|wireless|wlan|ethernet|以太网|无线/i.test(name)) score += 50;
+    if (/virtual|vmware|virtualbox|hyper-v|vethernet|wsl|vpn|tunnel|tap|loopback/i.test(name)) score -= 500;
+    return score;
+  }
+
+  private normalizeAddress(raw: string): string {
+    return raw.replace(/^::ffff:/, "");
+  }
+
+  private isLanAddress(raw: string): boolean {
+    const address = this.normalizeAddress(raw);
+    if (address.startsWith("10.") || address.startsWith("192.168.")) return true;
+    const match = /^172\.(\d+)\./.exec(address);
+    return Boolean(match && Number(match[1]) >= 16 && Number(match[1]) <= 31);
   }
 
   private loadSettings(): McpDialogSettings {
@@ -338,10 +367,8 @@ export class McpDialogService {
   }
 
   private isPrivateAddress(raw: string): boolean {
-    const address = raw.replace(/^::ffff:/, "");
+    const address = this.normalizeAddress(raw);
     if (address === "127.0.0.1" || address === "::1") return true;
-    if (address.startsWith("10.") || address.startsWith("192.168.")) return true;
-    const match = /^172\.(\d+)\./.exec(address);
-    return Boolean(match && Number(match[1]) >= 16 && Number(match[1]) <= 31);
+    return this.isLanAddress(address);
   }
 }
