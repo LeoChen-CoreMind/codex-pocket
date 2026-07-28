@@ -376,7 +376,32 @@ MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录
 
 完整安全策略和漏洞报告方式见 [SECURITY.md](SECURITY.md)。
 
-## 开发检查
+## GitHub 在线编译
+
+仓库已经配置 [`.github/workflows/build.yml`](.github/workflows/build.yml)，无需在本地安装开发环境也可以通过 GitHub Actions 编译。以下情况会自动开始构建：
+
+- 向 `main` 分支推送提交。
+- 创建或更新目标为 `main` 的 Pull Request。
+- 在 GitHub 页面手动触发工作流。
+
+手动编译步骤：
+
+1. 打开 GitHub 仓库的 **Actions** 页面。
+2. 在左侧选择 **Build**。
+3. 点击右侧 **Run workflow**，选择 `main` 后确认运行。
+4. 等待 `Windows Bridge` 和 `Android APP` 两个任务都显示绿色完成。
+5. 打开本次运行详情，在页面底部 **Artifacts** 区域下载编译结果。
+
+在线构建提供两个压缩包：
+
+| Artifact | 内容 | 用途 |
+| --- | --- | --- |
+| `CodexPocketBridge-Windows-x64` | `CodexPocketBridge.exe` | Windows x64 自包含 Bridge 控制器 |
+| `CodexPocket-Android-Debug` | `app-debug.apk` | Android 调试安装包 |
+
+Artifact 默认保留 14 天。Windows 产物使用 Release、自包含、单文件模式；Android 产物使用标准 Debug 签名，仅用于测试。正式发布 APK 需要配置自己的签名证书，不应把证书或密码直接写进 workflow 或提交到仓库。
+
+## 本地开发检查
 
 ```powershell
 Set-Location .\bridge
@@ -389,7 +414,7 @@ Set-Location ..\mobile
 .\gradlew.bat :app:assembleDebug
 ```
 
-GitHub Actions 配置示例位于 [`docs/build-workflow.yml.example`](docs/build-workflow.yml.example)。
+GitHub Actions 会执行等价的 Windows 和 Android 构建，并在上传前检查产物是否存在及输出 SHA-256。
 
 ## 技术栈
 
