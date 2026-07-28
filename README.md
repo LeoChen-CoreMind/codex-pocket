@@ -401,6 +401,28 @@ MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录
 
 Artifact 默认保留 14 天。Windows 产物使用 Release、自包含、单文件模式；Android 产物使用标准 Debug 签名，仅用于测试。正式发布 APK 需要配置自己的签名证书，不应把证书或密码直接写进 workflow 或提交到仓库。
 
+### 正式版本发布
+
+正式版本由 [`.github/workflows/release.yml`](.github/workflows/release.yml) 构建。维护者推送与 `mobile/version.properties` 中 `versionName` 一致的 `v*` 标签后，GitHub 会自动：
+
+1. 从 Actions Secrets 恢复 Android 发布证书。
+2. 构建经过代码压缩和资源优化的签名 Release APK。
+3. 构建 Windows x64 自包含单文件 EXE。
+4. 使用 `apksigner` 验证 APK 签名。
+5. 生成 `SHA256SUMS.txt`。
+6. 创建 GitHub Release 并上传 APK、EXE 和校验文件。
+
+Release 工作流需要以下仓库 Secrets：
+
+| Secret | 内容 |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Android JKS/PKCS12 发布证书的 Base64 内容 |
+| `SIGNING_STORE_PASSWORD` | 证书库密码 |
+| `SIGNING_KEY_ALIAS` | 发布 Key Alias |
+| `SIGNING_KEY_PASSWORD` | 发布 Key 密码 |
+
+发布证书必须离线备份并长期保留。Android 后续版本只有继续使用同一证书签名，用户才能覆盖升级现有 APP。
+
 ## 本地开发检查
 
 ```powershell

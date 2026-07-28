@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Validate release version
+        run: |
+          $versionLine = Get-Content '.\mobile\version.properties' |
+            Where-Object { $_ -match '^versionName=' } |
+            Select-Object -First 1
+          if (-not $versionLine) {
+            throw 'versionName is missing from mobile/version.properties'
+          }
+          $version = ($versionLine -split '=', 2)[1].Trim()
+          $expectedTag = "v$version"
+          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+            throw "Tag '$env:GITHUB_REF_NAME' does not match Android version '$expectedTag'"
+          }
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_TAG=$expectedTag" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bridge/package-lock.json
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Android signing certificate
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          $required = @{
+            ANDROID_KEYSTORE_BASE64 = $env:KEYSTORE_BASE64
+            SIGNING_STORE_PASSWORD = $env:STORE_PASSWORD
+            SIGNING_KEY_ALIAS = $env:KEY_ALIAS
+            SIGNING_KEY_PASSWORD = $env:KEY_PASSWORD
+          }
+          foreach ($entry in $required.GetEnumerator()) {
+            if ([string]::IsNullOrWhiteSpace($entry.Value)) {
+              throw "Required GitHub Actions secret is missing: $($entry.Key)"
+            }
+          }
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'codex-pocket-release.jks'
+          [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          "SIGNING_STORE_FILE=$keystorePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SIGNING_STORE_PASSWORD=$env:STORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SIGNING_KEY_ALIAS=$env:KEY_ALIAS" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SIGNING_KEY_PASSWORD=$env:KEY_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install Bridge dependencies
+        working-directory: bridge
+        run: npm.cmd ci
+
+      - name: Build Windows release
+        working-directory: bridge-control
+        run: .\build-static.ps1
+
+      - name: Build signed Android release
+        working-directory: mobile
+        run: .\gradlew.bat :app:assembleRelease --stacktrace --no-daemon
+
+      - name: Verify Android signature
+        run: |
+          $apk = '.\mobile\app\build\outputs\apk\release\app-release.apk'
+          if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) {
+            throw "Signed Android release was not produced: $apk"
+          }
+          $apksigner = Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Recurse -Filter 'apksigner.bat' |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $apksigner) {
+            throw 'apksigner.bat was not found in the Android SDK'
+          }
+          & $apksigner.FullName verify --verbose --print-certs $apk
+          if ($LASTEXITCODE -ne 0) {
+            throw "APK signature verification failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Prepare release assets
+        run: |
+          $directory = '.\release-assets'
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          $windowsSource = '.\bridge-control\publish-static\CodexPocketBridge.exe'
+          $androidSource = '.\mobile\app\build\outputs\apk\release\app-release.apk'
+          if (-not (Test-Path -LiteralPath $windowsSource -PathType Leaf)) {
+            throw "Windows release was not produced: $windowsSource"
+          }
+          Copy-Item -LiteralPath $windowsSource -Destination "$directory\CodexPocketBridge-Windows-x64-$env:RELEASE_VERSION.exe"
+          Copy-Item -LiteralPath $androidSource -Destination "$directory\CodexPocket-Android-$env:RELEASE_VERSION.apk"
+          $checksums = Get-ChildItem -LiteralPath $directory -File |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            }
+          $checksums | Set-Content -LiteralPath "$directory\SHA256SUMS.txt" -Encoding ascii
+          Get-ChildItem -LiteralPath $directory -File | Select-Object Name, Length, LastWriteTime
+
+      - name: Upload release workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodexPocket-${{ github.ref_name }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = Get-ChildItem '.\release-assets' -File | ForEach-Object { $_.FullName }
+          gh release create $env:RELEASE_TAG @assets `
+            --verify-tag `
+            --title "Codex Pocket $env:RELEASE_VERSION" `
+            --generate-notes
