@@ -38,6 +38,9 @@ jobs:
           xcodebuild -version
           xcode-select -p
 
+      - name: Prepare Gradle wrapper
+        run: chmod +x mobile/gradlew
+
       - name: Build unsigned device app
         run: |
           xcodebuild \
