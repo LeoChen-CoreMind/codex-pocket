@@ -35,6 +35,9 @@ internal fun PendingInteractionDto.approvalDetail(): String {
     if (method == "item/tool/requestUserInput") {
         return userInputQuestions().firstOrNull()?.question ?: "请选择后继续"
     }
+    if (method == "item/fileChange/requestApproval") {
+        return source.fileChangeApprovalDetail()
+    }
     val lines = buildList {
         source.stringValue("reason")?.let { add(it) }
         source.stringValue("command")?.let { add("命令：${it.compactCommand()}") }
@@ -42,6 +45,27 @@ internal fun PendingInteractionDto.approvalDetail(): String {
         source["permissions"]?.readableValue()?.takeIf { it.isNotBlank() }?.let { add("权限：$it") }
     }
     return lines.distinct().joinToString("\n").ifBlank { method.substringAfterLast('/') }
+}
+
+private fun JsonObject.fileChangeApprovalDetail(): String {
+    val sections = buildList {
+        stringValue("reason")?.let(::add)
+        (stringValue("cwd") ?: stringValue("path"))?.let { add("位置：$it") }
+        val changes = get("changes") as? JsonArray
+        changes.orEmpty().mapNotNullTo(this) { element ->
+            val change = element as? JsonObject ?: return@mapNotNullTo null
+            val path = change.stringValue("path") ?: return@mapNotNullTo null
+            val kind = when (change.stringValue("kind")) {
+                "add" -> "新增"
+                "delete" -> "删除"
+                else -> "编辑"
+            }
+            val header = "### $kind `$path`"
+            val diff = change.stringValue("diff")
+            if (diff.isNullOrBlank()) header else "$header\n\n```diff\n${diff.take(MAX_APPROVAL_DIFF_CHARS)}\n```"
+        }
+    }
+    return sections.distinct().joinToString("\n\n").ifBlank { "等待文件修改详情" }
 }
 
 internal fun PendingInteractionDto.userInputQuestions(): List<UserInputQuestion> {
@@ -81,3 +105,5 @@ private fun String.compactCommand(): String {
     val normalized = replace(Regex("\\s+"), " ").trim()
     return if (normalized.length <= 360) normalized else normalized.take(357) + "..."
 }
+
+private const val MAX_APPROVAL_DIFF_CHARS = 48_000

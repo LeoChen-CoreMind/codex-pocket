@@ -121,6 +121,7 @@ export class ThreadService {
   private readonly pendingInteractions = new Map<string, PendingInteraction>();
   private readonly clientMessages = new Map<string, number>();
   private readonly messagePhases = new Map<string, "commentary" | "final" | null>();
+  private readonly fileChangesByItem = new Map<string, unknown[]>();
   private readonly turnMessages = new Map<string, QueuedMessage>();
   private readonly completedPlanTurns = new Set<string>();
   private readonly steeringQueuedMessages = new Set<string>();
@@ -744,6 +745,9 @@ export class ThreadService {
         for (const key of this.messagePhases.keys()) {
           if (key.startsWith(`${threadId}:`)) this.messagePhases.delete(key);
         }
+        for (const key of this.fileChangesByItem.keys()) {
+          if (key.startsWith(`${threadId}:`)) this.fileChangesByItem.delete(key);
+        }
         this.publishQueue(threadId, runtime);
         if (!runtime.queuePaused) void this.flushQueue(threadId, runtime);
       }
@@ -785,6 +789,23 @@ export class ThreadService {
       method.startsWith("item/commandExecution/") ||
       method === "thread/status/changed"
     )) {
+      if (method === "item/fileChange/patchUpdated" && typeof value.itemId === "string" && Array.isArray(value.changes)) {
+        this.fileChangesByItem.set(`${threadId}:${value.itemId}`, value.changes);
+        for (const [requestId, interaction] of this.pendingInteractions) {
+          if (
+            interaction.method !== "item/fileChange/requestApproval" ||
+            interaction.threadId !== threadId ||
+            interaction.itemId !== value.itemId
+          ) continue;
+          const currentParams = (interaction.params ?? {}) as Record<string, unknown>;
+          const updatedInteraction = {
+            ...interaction,
+            params: { ...currentParams, changes: value.changes }
+          };
+          this.pendingInteractions.set(requestId, updatedInteraction);
+          this.events.publish("interaction.requested", threadId, updatedInteraction);
+        }
+      }
       this.events.publish(method, threadId, method === "item/fileChange/patchUpdated"
         ? {
             ...value,
@@ -796,13 +817,21 @@ export class ThreadService {
 
   private handleServerRequest(request: JsonRpcRequest): void {
     const params = (request.params ?? {}) as Record<string, unknown>;
+    const threadId = typeof params.threadId === "string" ? params.threadId : null;
+    const itemId = typeof params.itemId === "string" ? params.itemId : null;
+    const trackedChanges = request.method === "item/fileChange/requestApproval" && threadId && itemId
+      ? this.fileChangesByItem.get(`${threadId}:${itemId}`)
+      : undefined;
+    const interactionParams = trackedChanges && (!Array.isArray(params.changes) || params.changes.length === 0)
+      ? { ...params, changes: trackedChanges }
+      : request.params;
     const interaction: PendingInteraction = {
       requestId: request.id,
       method: request.method,
-      threadId: typeof params.threadId === "string" ? params.threadId : null,
+      threadId,
       turnId: typeof params.turnId === "string" ? params.turnId : null,
-      itemId: typeof params.itemId === "string" ? params.itemId : null,
-      params: request.params,
+      itemId,
+      params: interactionParams,
       createdAt: Date.now()
     };
     this.pendingInteractions.set(String(request.id), interaction);

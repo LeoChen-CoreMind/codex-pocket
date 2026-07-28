@@ -232,32 +232,6 @@ class Companion {
           await this.register();
           break;
         }
-        case "refreshThread": {
-          if (typeof command.threadId !== "string" || !command.threadId) {
-            throw new Error("refreshThread command is missing threadId");
-          }
-          const tabs = vscode.window.tabGroups.all
-            .flatMap((group) => group.tabs)
-            .filter((tab) => threadIdFromTab(tab) === command.threadId);
-          if (tabs.length === 0) break;
-          // Use a unique URI so the official Codex custom editor loads fresh data while the
-          // existing tab remains visible until the replacement is ready.
-          const uri = vscode.Uri.from({
-            scheme: "openai-codex",
-            authority: "route",
-            path: `/local/${command.threadId}`,
-            query: `refresh=${crypto.randomUUID()}`
-          });
-          await vscode.commands.executeCommand(
-            "vscode.openWith",
-            uri,
-            "chatgpt.conversationEditor",
-            { preview: false, preserveFocus: true }
-          );
-          await vscode.window.tabGroups.close(tabs, true);
-          await this.register();
-          break;
-        }
         case "closeThread": {
           if (typeof command.threadId !== "string" || !command.threadId) {
             throw new Error("closeThread command is missing threadId");

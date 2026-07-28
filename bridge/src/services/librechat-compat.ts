@@ -27,6 +27,7 @@ interface CompatStream {
   toolParts: Array<Record<string, unknown>>;
   orderedParts: Array<Record<string, unknown>>;
   orderedItemIndex: Map<string, number>;
+  completedOperationIds: Set<string>;
   imageFiles: BridgeFileReference[];
   imageTasks: Array<Promise<void>>;
   userFiles: BridgeFileReference[];
@@ -50,6 +51,7 @@ function orderedAssistantContent(records: ChatRecord[]): {
 
   for (const record of records) {
     if (!record.text) continue;
+    if (itemIndex.has(record.itemId)) continue;
     if (record.kind === "thinking" || (record.kind === "message" && record.phase === "commentary")) {
       const remaining = MAX_THINKING_CHARS - thinkingChars;
       if (remaining <= 0) continue;
@@ -137,6 +139,21 @@ function setOrderedTool(
   stream.orderedParts[index] = {
     type: "tool_call",
     tool_call: { id: itemId, name: toolName, args: input ? { detail: input } : {}, output: output ?? "" }
+  };
+}
+
+function richerOperationText(previous: unknown, next: string): string {
+  const current = typeof previous === "string" ? previous : "";
+  if (!current) return next;
+  if (!next) return current;
+  return next.length >= current.length ? next : current;
+}
+
+export function compatResumeFrame(orderedParts: Array<Record<string, unknown>>): Record<string, unknown> {
+  return {
+    sync: true,
+    resumeState: { aggregatedContent: orderedParts },
+    pendingEvents: []
   };
 }
 
@@ -372,6 +389,13 @@ function recoveredStream(threadId: string, records: ChatRecord[]): CompatStream 
     toolParts,
     orderedParts: ordered.content,
     orderedItemIndex: ordered.itemIndex,
+    completedOperationIds: new Set(
+      assistantRecords
+        .filter((record) =>
+          (record.kind === "thinking" || record.kind === "tool") && record.state !== "streaming"
+        )
+        .map((record) => record.itemId)
+    ),
     imageFiles: [],
     imageTasks: [],
     userFiles: [],
@@ -423,6 +447,7 @@ function mergeRecoveredStream(target: CompatStream, recovered: CompatStream): vo
       target.orderedItemIndex = shifted;
     }
   }
+  for (const itemId of recovered.completedOperationIds) target.completedOperationIds.add(itemId);
   if (recovered.createdAt < target.createdAt) target.createdAt = recovered.createdAt;
 }
 
@@ -865,6 +890,7 @@ export function registerLibreChatCompat(
       toolParts: [],
       orderedParts: [],
       orderedItemIndex: new Map(),
+      completedOperationIds: new Set(),
       imageFiles: [],
       imageTasks: [],
       userFiles,
@@ -938,7 +964,11 @@ export function registerLibreChatCompat(
       if (!response.destroyed && !response.writableEnded) response.write(": keep-alive\n\n");
     }, 15_000);
     heartbeat.unref();
-    for (const part of stream.orderedParts) {
+    const query = request.query as Record<string, unknown>;
+    const isResume = query.resume === true || query.resume === "true";
+    if (isResume) {
+      writeSse(response, compatResumeFrame(stream.orderedParts));
+    } else for (const part of stream.orderedParts) {
       if (part.type === "think" && typeof part.think === "string" && part.think) {
         writeSse(response, { type: "thinking", text: part.think });
       } else if (part.type === "tool_call") {
@@ -1092,11 +1122,19 @@ export function registerLibreChatCompat(
       const existingIndex = stream.orderedItemIndex.get(payload.itemId);
       const existingPart = existingIndex === undefined ? undefined : stream.orderedParts[existingIndex];
       const existingCall = existingPart?.tool_call as Record<string, unknown> | undefined;
-      setOrderedTool(stream, payload.itemId, String(existingCall?.name ?? "fileChange"), "", output);
+      const existingArgs = existingCall?.args as Record<string, unknown> | undefined;
+      const mergedOutput = richerOperationText(existingCall?.output, output);
+      setOrderedTool(
+        stream,
+        payload.itemId,
+        String(existingCall?.name ?? "fileChange"),
+        String(existingArgs?.detail ?? ""),
+        mergedOutput
+      );
       for (const client of stream.clients) writeSse(client, {
         type: "tool_call_complete",
         toolCallId: payload.itemId,
-        output
+        output: mergedOutput
       });
       return;
     }
@@ -1107,7 +1145,8 @@ export function registerLibreChatCompat(
       const detail = cappedText(liveOperationText(operationItemText(item)), MAX_TOOL_OUTPUT_CHARS);
       if (item.type === "reasoning" || item.type === "plan") {
         ensureOrderedPart(stream, item.id, "think");
-        if (event.type === "operation.completed" && detail) {
+        if (event.type === "operation.completed" && detail && !stream.completedOperationIds.has(item.id)) {
+          stream.completedOperationIds.add(item.id);
           stream.thinkingParts.push(detail);
           setOrderedText(stream, item.id, "think", detail, false);
           for (const client of stream.clients) writeSse(client, { type: "thinking", text: `${detail}\n\n` });
@@ -1123,17 +1162,32 @@ export function registerLibreChatCompat(
           input: detail
         });
       } else {
-        setOrderedTool(stream, item.id, item.type, detail, detail);
-        if (stream.toolParts.length < MAX_TOOL_PARTS) {
-          stream.toolParts.push({
-            type: "tool_call",
-            tool_call: { id: item.id, name: item.type, args: {}, output: detail }
-          });
+        const existingIndex = stream.orderedItemIndex.get(item.id);
+        const existingPart = existingIndex === undefined ? undefined : stream.orderedParts[existingIndex];
+        const existingCall = existingPart?.tool_call as Record<string, unknown> | undefined;
+        const existingArgs = existingCall?.args as Record<string, unknown> | undefined;
+        const input = richerOperationText(existingArgs?.detail, detail);
+        const output = richerOperationText(existingCall?.output, detail);
+        setOrderedTool(stream, item.id, item.type, input, output);
+        const firstCompletion = !stream.completedOperationIds.has(item.id);
+        stream.completedOperationIds.add(item.id);
+        const toolPart = {
+          type: "tool_call",
+          tool_call: { id: item.id, name: item.type, args: {}, output }
+        };
+        const toolPartIndex = stream.toolParts.findIndex((part) => {
+          const call = part.tool_call as Record<string, unknown> | undefined;
+          return call?.id === item.id;
+        });
+        if (toolPartIndex >= 0) {
+          stream.toolParts[toolPartIndex] = toolPart;
+        } else if (stream.toolParts.length < MAX_TOOL_PARTS) {
+          stream.toolParts.push(toolPart);
         }
-        for (const client of stream.clients) writeSse(client, {
+        if (firstCompletion) for (const client of stream.clients) writeSse(client, {
           type: "tool_call_complete",
           toolCallId: item.id,
-          output: detail
+          output
         });
         const imagePath = item.type === "imageView" && typeof item.path === "string"
           ? item.path

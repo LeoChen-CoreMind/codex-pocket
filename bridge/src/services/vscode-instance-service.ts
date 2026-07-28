@@ -8,7 +8,6 @@ export type VsCodeCommandType =
   | "focus"
   | "newChat"
   | "openThread"
-  | "refreshThread"
   | "closeThread"
   | "openFile";
 
@@ -212,26 +211,6 @@ export class VsCodeInstanceService {
     for (const wake of instance.waiters) wake();
     instance.waiters.clear();
     return command;
-  }
-
-  refreshOpenThread(threadId: string): number {
-    let queued = 0;
-    for (const instance of this.instances.values()) {
-      if (!this.isOnline(instance) || !instance.openThreads.some((thread) => thread.threadId === threadId)) {
-        continue;
-      }
-      const refreshAlreadyPending = instance.commands.some(
-        (command) =>
-          command.sequence > instance.lastCompletedSequence &&
-          command.type === "refreshThread" &&
-          command.threadId === threadId
-      );
-      if (!refreshAlreadyPending) {
-        this.enqueueFor(instance.instanceId, "refreshThread", threadId);
-        queued += 1;
-      }
-    }
-    return queued;
   }
 
   close(): void {

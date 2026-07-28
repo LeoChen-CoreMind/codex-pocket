@@ -318,7 +318,19 @@ private fun PermissionApprovalPanel(
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(6.dp))
-            Text(request.approvalDetail(), style = MaterialTheme.typography.bodyMedium)
+            val detail = request.approvalDetail()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                if (request.method == "item/fileChange/requestApproval") {
+                    MarkdownContent(text = detail, immediate = true)
+                } else {
+                    Text(detail, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             error?.let {
                 Spacer(Modifier.height(6.dp))
                 Text(it, color = MaterialTheme.colorScheme.error)
