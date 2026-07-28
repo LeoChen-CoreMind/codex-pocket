@@ -38,21 +38,45 @@ Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、W
 
 ### Android APP
 
-<p align="center">
-  <img src="docs/screenshots/online-sessions.png" width="260" alt="Codex Pocket 在线会话列表">
-  <img src="docs/screenshots/chat-control.png" width="260" alt="Codex Pocket 实时对话和消息控制">
-  <img src="docs/screenshots/approval.png" width="260" alt="Codex Pocket 移动审批">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/mcp-dialog.png" width="320" alt="Codex Pocket MCP 交互">
-</p>
+<table>
+  <tr>
+    <th width="50%">在线会话</th>
+    <th width="50%">实时对话与消息控制</th>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="docs/screenshots/online-sessions.png" width="360" alt="Codex Pocket 在线会话列表">
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/screenshots/chat-control.png" width="360" alt="Codex Pocket 实时对话和消息控制">
+    </td>
+  </tr>
+  <tr>
+    <th>移动审批</th>
+    <th>MCP 手机交互</th>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="docs/screenshots/approval.png" width="360" alt="Codex Pocket 移动审批">
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/screenshots/mcp-dialog.png" width="360" alt="Codex Pocket MCP 交互">
+    </td>
+  </tr>
+</table>
 
 ### Windows 服务端
 
-<p align="center">
-  <img src="docs/screenshots/server-console.png" width="820" alt="Codex Pocket Windows Bridge 控制器">
-</p>
+<table>
+  <tr>
+    <th>Codex Pocket Bridge 控制器</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/server-console.png" width="900" alt="Codex Pocket Windows Bridge 控制器">
+    </td>
+  </tr>
+</table>
 
 需要上传的图片如下：
 
