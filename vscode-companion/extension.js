@@ -240,19 +240,21 @@ class Companion {
             .flatMap((group) => group.tabs)
             .filter((tab) => threadIdFromTab(tab) === command.threadId);
           if (tabs.length === 0) break;
-          const shouldFocus = tabs.some((tab) => tab.isActive);
-          await vscode.window.tabGroups.close(tabs, true);
+          // Use a unique URI so the official Codex custom editor loads fresh data while the
+          // existing tab remains visible until the replacement is ready.
           const uri = vscode.Uri.from({
             scheme: "openai-codex",
             authority: "route",
-            path: `/local/${command.threadId}`
+            path: `/local/${command.threadId}`,
+            query: `refresh=${crypto.randomUUID()}`
           });
           await vscode.commands.executeCommand(
             "vscode.openWith",
             uri,
             "chatgpt.conversationEditor",
-            { preview: false, preserveFocus: !shouldFocus }
+            { preview: false, preserveFocus: true }
           );
+          await vscode.window.tabGroups.close(tabs, true);
           await this.register();
           break;
         }
