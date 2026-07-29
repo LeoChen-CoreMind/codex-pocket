@@ -33,6 +33,13 @@ const queueUpdateSchema = z.object({ text: z.string().trim().min(1).max(100_000)
 const queueReorderSchema = z.object({ clientMessageIds: z.array(z.string().min(8).max(128)).max(20) });
 const queueSteerSchema = z.object({ expectedTurnId: z.string().min(1).max(200) });
 const interruptSchema = z.object({ expectedTurnId: z.string().min(1).max(200) });
+const retryPolicySchema = z.object({
+  enabled: z.boolean(),
+  maxRetries: z.number().int().min(1).max(20).default(3),
+  untilSuccess: z.boolean().default(false),
+  delaySeconds: z.number().int().min(1).max(300).default(5),
+  retryPrompt: z.string().trim().min(1).max(4_000)
+});
 const mcpDialogConfigSchema = z.object({
   enabled: z.boolean(),
   port: z.number().int().min(1024).max(65535)
@@ -389,6 +396,21 @@ export async function buildServer(
   app.get("/api/threads/:threadId/activity", async (request) => {
     const params = request.params as { threadId: string };
     return threads.getActivity(params.threadId);
+  });
+
+  app.get("/api/threads/:threadId/retry", async (request) => {
+    const params = request.params as { threadId: string };
+    return { policy: threads.getRetryPolicy(params.threadId), status: threads.getActivity(params.threadId).retryStatus };
+  });
+
+  app.put("/api/threads/:threadId/retry", async (request) => {
+    const params = request.params as { threadId: string };
+    return { policy: threads.setRetryPolicy(params.threadId, retryPolicySchema.parse(request.body)) };
+  });
+
+  app.post("/api/threads/:threadId/retry/cancel", async (request) => {
+    const params = request.params as { threadId: string };
+    return threads.cancelRetry(params.threadId);
   });
 
   app.post("/api/threads/:threadId/interrupt", async (request) => {

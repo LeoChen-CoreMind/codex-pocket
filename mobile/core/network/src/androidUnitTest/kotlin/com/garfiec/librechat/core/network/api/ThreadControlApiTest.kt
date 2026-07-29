@@ -126,4 +126,54 @@ class ThreadControlApiTest {
         // Production JSON omits default values; the Bridge schema defaults an omitted mode to queue.
         assertThat(bodies[1]).doesNotContain("\"deliveryMode\"")
     }
+
+    @Test
+    fun `retry policy serializes all user settings`() = runTest {
+        var path = ""
+        var body = ""
+        val engine = MockEngine { request ->
+            path = request.url.encodedPath
+            body = String(request.body.toByteArray())
+            respond(
+                content = """{"policy":{"enabled":true,"maxRetries":7,"untilSuccess":true,"delaySeconds":9,"retryPrompt":"continue safely"}}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+
+        val saved = ThreadControlApi(jsonClient(engine)).updateRetryPolicy(
+            "thread-1",
+            RetryPolicyDto(
+                enabled = true,
+                maxRetries = 7,
+                untilSuccess = true,
+                delaySeconds = 9,
+                retryPrompt = "continue safely",
+            ),
+        )
+
+        assertThat(path).isEqualTo("/api/threads/thread-1/retry")
+        assertThat(body).contains("\"maxRetries\":7")
+        assertThat(body).contains("\"untilSuccess\":true")
+        assertThat(body).contains("\"delaySeconds\":9")
+        assertThat(body).contains("\"retryPrompt\":\"continue safely\"")
+        assertThat(saved.untilSuccess).isTrue()
+    }
+
+    @Test
+    fun `cancel retry post carries a JSON object body`() = runTest {
+        var body = ""
+        val engine = MockEngine { request ->
+            body = String(request.body.toByteArray())
+            respond(
+                content = "{}",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+
+        ThreadControlApi(jsonClient(engine)).cancelRetry("thread-1")
+
+        assertThat(body).isEqualTo("{}")
+    }
 }

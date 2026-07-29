@@ -16,6 +16,7 @@ export interface BridgeConfig {
   queueLimitPerThread: number;
   vscodeBindingFile: string;
   threadInstructionsFile: string;
+  threadRetrySettingsFile: string;
   threadQueueFile: string;
   mcpDialogSettingsFile: string;
   filesDirectory: string;
@@ -128,6 +129,7 @@ export function loadConfig(): BridgeConfig {
     queueLimitPerThread: intEnv("BRIDGE_THREAD_QUEUE_LIMIT", 20),
     vscodeBindingFile: join(dataDirectory, "vscode-binding.json"),
     threadInstructionsFile: join(dataDirectory, "thread-instructions.json"),
+    threadRetrySettingsFile: join(dataDirectory, "thread-retry-settings.json"),
     threadQueueFile: join(dataDirectory, "thread-queues.json"),
     mcpDialogSettingsFile: join(dataDirectory, "mcp-dialog.json"),
     filesDirectory: join(dataDirectory, "files"),

@@ -59,6 +59,8 @@ data class ChatUiState(
     val activitySource: String? get() = queue.activitySource
     val steerable: Boolean get() = queue.steerable
     val followUpMode: FollowUpMode get() = queue.followUpMode
+    val retryPolicy get() = queue.retryPolicy
+    val retryStatus get() = queue.retryStatus
     val isSearchOpen: Boolean get() = search.isSearchOpen
     val searchQuery: String get() = search.searchQuery
     val searchMatchIndices: List<SearchMatch> get() = search.searchMatchIndices

@@ -8,11 +8,11 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/platform-Windows%20%2B%20Android-1677ff" alt="Windows and Android">
+  <img src="https://img.shields.io/badge/platform-Windows%20%2B%20Android%20%2B%20iPhone-1677ff" alt="Windows, Android and iPhone">
   <img src="https://img.shields.io/badge/editor-VS%20Code%20%7C%20Cursor%20%7C%20Antigravity%20%7C%20Windsurf-555" alt="Supported editors">
 </p>
 
-Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android 客户端、Windows Bridge 和编辑器 Companion** 组成。它连接和控制的是 **VS Code、Cursor、Antigravity、Windsurf 等 Code 系编辑器中运行的 Codex 插件会话**，让你不用一直守在电脑前，也能看到编程任务进度、继续发送要求、处理审批、管理排队消息，并在需要时停止由手机发起的任务。
+Codex Pocket 是一套开源的 Codex 移动伴侣，由 **Android/iPhone 客户端、Windows Bridge 和编辑器 Companion** 组成。它连接和控制的是 **VS Code、Cursor、Antigravity、Windsurf 等 Code 系编辑器中运行的 Codex 插件会话**，让你不用一直守在电脑前，也能看到编程任务进度、继续发送要求、处理审批、管理排队消息，并在需要时停止由手机发起的任务。
 
 它不是另一个通用聊天壳，也不是 OpenAI 官方 Codex 桌面应用的复刻或修改版。Codex Pocket 专注于编辑器内的编程工作流：识别当前编辑器窗口和工作区、同步插件会话、显示工具调用与文件修改、处理代码执行审批，并为长时间运行的开发任务提供排队、引导和远程控制。
 
@@ -27,7 +27,7 @@ Codex Pocket 和官方 Codex 桌面应用面向不同的使用方式。本项目
 | 对比项 | Codex Pocket | 官方 Codex 桌面应用 |
 | --- | --- | --- |
 | 产品形态 | Code 系编辑器内 Codex 插件的第三方移动伴侣和控制端 | OpenAI 官方提供和维护的独立产品 |
-| 主要入口 | VS Code、Cursor、Antigravity、Windsurf 等编辑器及 Android 手机 | 官方桌面应用 |
+| 主要入口 | VS Code、Cursor、Antigravity、Windsurf 等编辑器及 Android/iPhone 手机 | 官方桌面应用 |
 | 核心场景 | 编程任务、工作区文件、工具调用、代码审批、任务队列和运行中引导 | 以官方产品实际提供的功能和支持范围为准 |
 | 会话来源 | 当前编辑器窗口中运行的 Codex 插件会话 | 官方应用自身管理的会话 |
 | 数据通道 | 用户自己运行的 Windows Bridge，默认通过可信局域网连接 | 由官方产品和服务管理 |
@@ -42,6 +42,7 @@ Codex Pocket 和官方 Codex 桌面应用面向不同的使用方式。本项目
 - **审批不再卡住工作流**：命令、文件修改、权限申请和计划确认可以直接在手机上处理。
 - **多窗口不会认错会话**：按编辑器实例和会话标识在线窗口，同一会话在不同窗口打开时也能区分。
 - **手机和电脑状态保持一致**：发送、停止、运行中、排队和完成状态由 Bridge 统一同步，APP 重启后可重新恢复。
+- **异常原因和自动重试**：任务中断时显示 Codex 返回的原因与已重试次数，可按会话设置有限重试或一直重试到成功。
 - **AI 可以主动向手机提问**：通过 MCP 展示 Markdown、图片、选择项或自由文本输入，适合需要人工确认的自动化流程。
 
 ## 适合谁
@@ -61,28 +62,28 @@ Codex Pocket 和官方 Codex 桌面应用面向不同的使用方式。本项目
     <th>用途</th>
   </tr>
   <tr>
-    <td><strong>在线会话</strong><br><sub>Android APP</sub></td>
+    <td><strong>在线会话</strong><br><sub>Android / iPhone APP</sub></td>
     <td align="center">
       <img src="docs/screenshots/online-sessions.png" width="120" alt="Codex Pocket 在线会话列表">
     </td>
     <td>查看当前在线的编辑器、会话和工作区，快速进入正确的编程任务。</td>
   </tr>
   <tr>
-    <td><strong>实时对话</strong><br><sub>Android APP</sub></td>
+    <td><strong>实时对话</strong><br><sub>Android / iPhone APP</sub></td>
     <td align="center">
       <img src="docs/screenshots/chat-control.png" width="120" alt="Codex Pocket 实时对话和消息控制">
     </td>
     <td>显示回复、思考和工具调用，并提供发送、停止、排队和引导操作。</td>
   </tr>
   <tr>
-    <td><strong>移动审批</strong><br><sub>Android APP</sub></td>
+    <td><strong>移动审批</strong><br><sub>Android / iPhone APP</sub></td>
     <td align="center">
       <img src="docs/screenshots/approval.png" width="120" alt="Codex Pocket 移动审批">
     </td>
     <td>直接在手机上处理命令执行、文件修改、权限申请和计划确认。</td>
   </tr>
   <tr>
-    <td><strong>MCP 交互</strong><br><sub>Android APP</sub></td>
+    <td><strong>MCP 交互</strong><br><sub>Android / iPhone APP</sub></td>
     <td align="center">
       <img src="docs/screenshots/mcp-dialog.png" width="120" alt="Codex Pocket MCP 交互">
     </td>
@@ -110,13 +111,13 @@ Codex Pocket 和官方 Codex 桌面应用面向不同的使用方式。本项目
 | 移动审批 | 在手机端允许一次、会话内允许或拒绝命令和权限请求 |
 | 工作区文件 | 浏览当前绑定电脑的工作区文件，并将文件引用加入对话 |
 | MCP 对话 | 向手机发送 Markdown、图片、选项和自由文本交互 |
-| 对话提示词 | 为每个会话保存独立的 `developer_instructions` |
+| 对话提示词与重试 | 为每个会话保存独立的 `developer_instructions`，并配置异常重试次数、间隔和续跑提示 |
 | Windows 控制器 | 管理 Bridge、连接密钥、防火墙、编辑器进程、FTP 和 FRP 状态 |
 
 ## 工作原理
 
 ```text
-Android APP
+Android / iPhone APP
     |  HTTP / SSE / Bearer Token
     v
 Windows Bridge -------- MCP 客户端
@@ -130,7 +131,7 @@ Editor Companion
 
 1. **Editor Companion** 上报当前编辑器窗口、工作区和正在运行的会话。
 2. **Windows Bridge** 连接 Codex App Server，统一管理事件流、审批、队列、引导和访问密钥。
-3. **Android APP** 只连接你的 Bridge，并通过 Bearer Token 鉴权。
+3. **Android/iPhone APP** 只连接你的 Bridge，并通过 Bearer Token 鉴权。
 4. Bridge 是运行状态的权威来源，因此旧事件不会覆盖新回合，手机重连后也能恢复正确状态。
 
 ## 快速开始
@@ -138,7 +139,7 @@ Editor Companion
 ### 环境要求
 
 - Windows 10/11 x64
-- Android 手机，手机和电脑位于同一个可信局域网
+- Android 手机或 iPhone，手机和电脑位于同一个可信局域网
 - Node.js 22 或更高版本
 - .NET 10 SDK
 - JDK 21 和 Android SDK
@@ -188,6 +189,12 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 
 调试 APK 使用 Android 标准调试签名。正式分发时，请通过 `keystore.properties` 或 `SIGNING_*` 环境变量配置自己的发布证书，严禁提交证书和密码。
 
+### 4.1 安装 iPhone APP
+
+GitHub Release 提供 `CodexPocket-iOS-unsigned-*.ipa`。该 IPA 未签名，**不能直接安装**，需要使用自己的 Apple ID 通过 Sideloadly、AltStore 等工具自签后安装。免费 Apple ID 签名通常只有 7 天有效期，到期前需要重新签名安装。
+
+完整步骤见：[iOS 自签安装说明](docs/IOS_SELF_SIGN_INSTALL.md)。iOS 正式构建使用 GitHub Actions 的 macOS runner；Windows 本机可以修改和提交 iOS 共享代码，但不能直接完成 Xcode/iPhone 安装包构建。
+
 ### 5. 启动 Bridge
 
 1. 先启动 VS Code、Cursor、Antigravity 或 Windsurf，并打开一个 Codex 会话。
@@ -207,6 +214,8 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 4. 打开会话即可查看实时输出、继续发送消息、处理审批或停止 Pocket 发起的任务。
 
 地址和密钥必须来自同一台正在运行的 Bridge。重新生成密钥后，手机端需要使用新密钥重新连接。
+
+Android 和 iPhone 使用相同的共享业务逻辑和 Bridge API；发送、引导、等待队列、审批、中断状态与自动重试的行为保持一致。
 
 ## 使用方法
 
@@ -248,11 +257,27 @@ Bridge 启动成功后可以让控制器保持运行。关闭 Bridge 后，APP �
 2. 点击停止后，APP 会校验当前回合标识。
 3. 只有 Pocket 发起的匹配回合会被停止，桌面端独立启动的任务不会被误停。
 
-### 6. 处理审批和计划确认
+手动停止属于用户操作，不会触发自动重试。
+
+### 6. 查看中断原因和设置自动重试
+
+任务以 `failed`、`interrupted`、`aborted` 等异常状态结束时，对话页会显示 Codex 返回的原因、当前状态和已经重试的次数。网络短暂断开只会让 APP 重新连接 Bridge，不会被当作任务失败，也不会重复发送消息。
+
+1. 打开对话右上角菜单，进入“**对话提示词**”。
+2. 打开“异常中断时自动重试”。
+3. 选择最多重试次数，或选择“一直重试，直到任务成功”。
+4. 设置重试间隔和每次重试时发送的内容，然后保存。
+5. 自动重试运行时，可在对话状态条中点击“停止重试”，终止当前重试链。
+
+自动重试默认关闭，并按会话单独保存。默认续跑提示会要求 Codex 先检查当前会话和工作区状态，从中断处继续，避免重复已经完成的修改或命令。启用“一直重试”前应确认任务可以安全重复检查；涉及发布、付款、删除、外部消息等有副作用的操作，建议使用有限次数。
+
+重试策略和调度由 Windows Bridge 服务端负责，并持久化在 `%LOCALAPPDATA%\CodexMobileBridge`。关闭 APP、手机锁屏或手机网络暂时断开不会停止重试；重新打开 APP 后会从 Bridge 读取中断原因、重试次数和当前状态。停止 Bridge 会中止尚未执行的计时调度，重新启动 Bridge 后仍会保留每个会话的重试设置。
+
+### 7. 处理审批和计划确认
 
 当 Codex 请求执行命令、修改文件、获取权限或确认计划时，审批内容会显示在对话时间线中。根据需要选择允许一次、会话内允许、拒绝或计划确认，结果会立即返回电脑端的当前任务。
 
-### 7. 使用 MCP 向手机提问
+### 8. 使用 MCP 向手机提问
 
 1. 进入 APP 设置中的“**MCP 对话**”，打开服务。
 2. 把页面生成的 MCP 地址、Bearer Token 和提示词配置到 AI 客户端。
@@ -394,7 +419,7 @@ MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录
 
 | 目录 | 职责 | 技术 |
 | --- | --- | --- |
-| `mobile/` | Android 客户端、聊天、审批、设置和 MCP 界面 | Kotlin Multiplatform、Jetpack Compose、Ktor、Koin、Room |
+| `mobile/` | Android/iPhone 客户端、聊天、审批、设置和 MCP 界面 | Kotlin Multiplatform、Compose Multiplatform、Ktor、Koin、Room |
 | `bridge/` | Codex App Server 适配、API、SSE、队列、MCP 和工作区服务 | TypeScript、Node.js、Fastify、Zod、WebSocket |
 | `bridge-control/` | Windows 图形控制器和自包含单文件发布 | C#、.NET、Windows Forms |
 | `vscode-companion/` | 编辑器窗口、工作区、标签和运行状态同步 | JavaScript、VS Code Extension API |
@@ -424,15 +449,16 @@ MCP 地址和 Token 相当于访问凭据，不要发布到 issue、聊天记录
 1. 打开 GitHub 仓库的 **Actions** 页面。
 2. 在左侧选择 **Build**。
 3. 点击右侧 **Run workflow**，选择 `main` 后确认运行。
-4. 等待 `Windows Bridge` 和 `Android APP` 两个任务都显示绿色完成。
+4. 等待所需的 `Windows Bridge`、`Android APP` 或 iOS 构建任务显示绿色完成。
 5. 打开本次运行详情，在页面底部 **Artifacts** 区域下载编译结果。
 
-在线构建提供两个压缩包：
+在线构建提供 Windows、Android 产物；iOS 未签名 IPA 由 `iOS Unsigned IPA` workflow 的 macOS runner 构建：
 
 | Artifact | 内容 | 用途 |
 | --- | --- | --- |
 | `CodexPocketBridge-Windows-x64` | `CodexPocketBridge.exe` | Windows x64 自包含 Bridge 控制器 |
 | `CodexPocket-Android-Debug` | `app-debug.apk` | Android 调试安装包 |
+| `CodexPocket-iOS-unsigned-*` | 未签名 `.ipa` 和 `SHA256SUMS.txt` | iPhone 自签安装包，由 `iOS Unsigned IPA` workflow 生成 |
 
 Artifact 默认保留 14 天。Windows 产物使用 Release、自包含、单文件模式；Android 产物使用标准 Debug 签名，仅用于测试。正式发布 APK 需要配置自己的签名证书，不应把证书或密码直接写进 workflow 或提交到仓库。
 

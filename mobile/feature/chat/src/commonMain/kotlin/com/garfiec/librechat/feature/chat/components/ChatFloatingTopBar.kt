@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +36,14 @@ import com.garfiec.librechat.feature.chat.resources.Res
 import com.garfiec.librechat.feature.chat.resources.cd_more_options
 import com.garfiec.librechat.feature.chat.resources.cd_open_drawer
 import com.garfiec.librechat.feature.chat.resources.select_model
+import com.garfiec.librechat.feature.chat.resources.retry_count
+import com.garfiec.librechat.feature.chat.resources.retry_failed
+import com.garfiec.librechat.feature.chat.resources.retry_scheduled
+import com.garfiec.librechat.feature.chat.resources.retry_retrying
+import com.garfiec.librechat.feature.chat.resources.retry_succeeded
+import com.garfiec.librechat.feature.chat.resources.retry_exhausted
+import com.garfiec.librechat.feature.chat.resources.retry_cancelled
+import com.garfiec.librechat.feature.chat.resources.stop_future_retries
 import com.garfiec.librechat.feature.chat.screen.rememberChatModelLabel
 import com.garfiec.librechat.feature.chat.viewmodel.ChatUiState
 import com.garfiec.librechat.feature.chat.viewmodel.ChatViewModel
@@ -187,14 +196,88 @@ internal fun ChatFloatingTopBar(
                 onClose = viewModel::closeSearch,
             )
         }
+
+        uiState.retryStatus?.let { status ->
+            RetryStatusBanner(
+                state = status.state,
+                reason = status.reason,
+                retryCount = status.retryCount,
+                onStop = viewModel::cancelAutomaticRetry,
+            )
+        }
     }
 
     if (showInstructionsSheet) {
         ConversationInstructionsSheet(
             initialValue = uiState.modelParameters.customInstructions,
+            initialRetryPolicy = uiState.retryPolicy,
             onDismiss = { showInstructionsSheet = false },
-            onSave = viewModel::setConversationInstructions,
+            onSave = { instructions, policy ->
+                viewModel.setConversationInstructions(instructions)
+                viewModel.setRetryPolicy(policy)
+            },
         )
+    }
+}
+
+@Composable
+private fun RetryStatusBanner(
+    state: String,
+    reason: String,
+    retryCount: Int,
+    onStop: () -> Unit,
+) {
+    val title = when (state) {
+        "scheduled" -> stringResource(Res.string.retry_scheduled)
+        "retrying" -> stringResource(Res.string.retry_retrying)
+        "succeeded" -> stringResource(Res.string.retry_succeeded)
+        "exhausted" -> stringResource(Res.string.retry_exhausted)
+        "cancelled" -> stringResource(Res.string.retry_cancelled)
+        else -> stringResource(Res.string.retry_failed)
+    }
+    val active = state == "scheduled" || state == "retrying"
+    val containerColor = when (state) {
+        "succeeded" -> MaterialTheme.colorScheme.tertiaryContainer
+        "scheduled", "retrying" -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.errorContainer
+    }
+    val contentColor = when (state) {
+        "succeeded" -> MaterialTheme.colorScheme.onTertiaryContainer
+        "scheduled", "retrying" -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onErrorContainer
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(containerColor)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+            )
+            Text(
+                text = reason,
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor,
+                maxLines = 3,
+            )
+            if (retryCount > 0) {
+                Text(
+                    text = stringResource(Res.string.retry_count, retryCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
+                )
+            }
+        }
+        if (active) {
+            TextButton(onClick = onStop) {
+                Text(stringResource(Res.string.stop_future_retries))
+            }
+        }
     }
 }
 

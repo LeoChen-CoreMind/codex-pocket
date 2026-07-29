@@ -3,6 +3,8 @@ package com.garfiec.librechat.feature.chat.viewmodel
 import androidx.compose.runtime.Immutable
 import com.garfiec.librechat.core.data.endpoint.EndpointDispatch
 import com.garfiec.librechat.core.model.request.EphemeralAgent
+import com.garfiec.librechat.core.network.api.RetryPolicyDto
+import com.garfiec.librechat.core.network.api.RetryStatusDto
 import com.garfiec.librechat.core.ui.components.ModelParameters
 import com.garfiec.librechat.feature.chat.components.AttachedFile
 import kotlinx.serialization.json.JsonObject
@@ -32,6 +34,8 @@ data class QueueState(
     val steerable: Boolean = false,
     /** Delivery behavior for a new follow-up composed while a turn is active. */
     val followUpMode: FollowUpMode = FollowUpMode.QUEUE,
+    val retryPolicy: RetryPolicyDto = RetryPolicyDto(),
+    val retryStatus: RetryStatusDto? = null,
 )
 
 /**

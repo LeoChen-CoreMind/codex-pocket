@@ -70,6 +70,25 @@ export interface ThreadActivity {
   steerable: boolean;
   queuePaused: boolean;
   queue: QueuedMessage[];
+  retryPolicy: RetryPolicy;
+  retryStatus: RetryStatus | null;
+}
+
+export interface RetryPolicy {
+  enabled: boolean;
+  maxRetries: number;
+  untilSuccess: boolean;
+  delaySeconds: number;
+  retryPrompt: string;
+}
+
+export interface RetryStatus {
+  state: "failed" | "scheduled" | "retrying" | "succeeded" | "exhausted" | "cancelled";
+  turnId: string;
+  turnStatus: string;
+  reason: string;
+  retryCount: number;
+  scheduledAt: number | null;
 }
 
 function userInputText(message: Pick<QueuedMessage, "text" | "mentionedFiles">): string {
@@ -100,6 +119,9 @@ interface RuntimeThread {
   queuePaused: boolean;
   starting: Promise<void> | null;
   cwd: string | null;
+  retryStatus: RetryStatus | null;
+  retryTimer: NodeJS.Timeout | null;
+  retrySuppressed: boolean;
 }
 
 interface DesktopActivity {
@@ -115,6 +137,19 @@ interface PlanConfirmation {
 
 const HUMAN_SOURCES = ["cli", "vscode", "appServer", "unknown"];
 const MAX_THREAD_INSTRUCTIONS_CHARS = 32_000;
+const MAX_RETRY_PROMPT_CHARS = 4_000;
+const DEFAULT_RETRY_PROMPT = "刚才的任务异常中断。请先检查当前会话和工作区状态，从中断处继续，避免重复已经完成的操作。";
+const DEFAULT_RETRY_POLICY: RetryPolicy = {
+  enabled: false,
+  maxRetries: 3,
+  untilSuccess: false,
+  delaySeconds: 5,
+  retryPrompt: DEFAULT_RETRY_PROMPT
+};
+
+export function shouldRetry(policy: RetryPolicy, retryCount: number, suppressed: boolean): boolean {
+  return policy.enabled && !suppressed && (policy.untilSuccess || retryCount < policy.maxRetries);
+}
 
 export class ThreadService {
   private readonly runtimes = new Map<string, RuntimeThread>();
@@ -124,9 +159,12 @@ export class ThreadService {
   private readonly fileChangesByItem = new Map<string, unknown[]>();
   private readonly turnMessages = new Map<string, QueuedMessage>();
   private readonly completedPlanTurns = new Set<string>();
+  private readonly completedTurns = new Set<string>();
   private readonly steeringQueuedMessages = new Set<string>();
   private readonly planConfirmations = new Map<string, PlanConfirmation>();
   private readonly threadInstructions = new Map<string, string>();
+  private readonly threadRetryPolicies = new Map<string, RetryPolicy>();
+  private readonly manualInterruptTurns = new Set<string>();
   private readonly desktopActivities = new Map<string, Map<string, DesktopActivity>>();
 
   constructor(
@@ -135,6 +173,7 @@ export class ThreadService {
     private readonly config: BridgeConfig
   ) {
     this.loadThreadInstructions();
+    this.loadThreadRetryPolicies();
     this.loadThreadQueues();
     client.on("notification", (method, params) => this.handleNotification(method, params));
     client.on("serverRequest", (request) => this.handleServerRequest(request));
@@ -152,6 +191,48 @@ export class ThreadService {
     this.persistThreadInstructions();
     this.events.publish("thread.instructions.updated", threadId, { instructions: normalized });
     return normalized;
+  }
+
+  getRetryPolicy(threadId: string): RetryPolicy {
+    return { ...(this.threadRetryPolicies.get(threadId) ?? DEFAULT_RETRY_POLICY) };
+  }
+
+  setRetryPolicy(threadId: string, policy: RetryPolicy): RetryPolicy {
+    const normalized: RetryPolicy = {
+      enabled: Boolean(policy.enabled),
+      maxRetries: Math.max(1, Math.min(20, Math.trunc(policy.maxRetries || 3))),
+      untilSuccess: Boolean(policy.untilSuccess),
+      delaySeconds: Math.max(1, Math.min(300, Math.trunc(policy.delaySeconds || 5))),
+      retryPrompt: policy.retryPrompt.trim().slice(0, MAX_RETRY_PROMPT_CHARS) || DEFAULT_RETRY_PROMPT
+    };
+    this.threadRetryPolicies.set(threadId, normalized);
+    this.persistThreadRetryPolicies();
+    if (!normalized.enabled) this.cancelRetry(threadId);
+    else this.runtime(threadId).retrySuppressed = false;
+    this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+    return normalized;
+  }
+
+  cancelRetry(threadId: string): ThreadActivity {
+    const runtime = this.runtime(threadId);
+    if (runtime.retryTimer) clearTimeout(runtime.retryTimer);
+    runtime.retryTimer = null;
+    runtime.retrySuppressed = true;
+    const queuedRetryIds = runtime.queue
+      .filter((message) => message.clientMessageId.startsWith("retry-"))
+      .map((message) => message.clientMessageId);
+    if (queuedRetryIds.length > 0) {
+      const queuedRetryIdSet = new Set(queuedRetryIds);
+      runtime.queue = runtime.queue.filter((message) => !queuedRetryIdSet.has(message.clientMessageId));
+      for (const clientMessageId of queuedRetryIds) this.clientMessages.delete(clientMessageId);
+      if (runtime.queue.length === 0) runtime.queuePaused = false;
+      this.publishQueue(threadId, runtime);
+    }
+    if (runtime.retryStatus && ["failed", "scheduled", "retrying"].includes(runtime.retryStatus.state)) {
+      runtime.retryStatus = { ...runtime.retryStatus, state: "cancelled", scheduledAt: null };
+    }
+    this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+    return this.getActivity(threadId);
   }
 
   async listThreads(input: {
@@ -297,10 +378,27 @@ export class ThreadService {
         : queued;
     }
 
+    this.resetRetryChain(runtime);
     runtime.starting = this.startTurn(input.threadId, runtime, message).finally(() => {
       runtime.starting = null;
     });
-    await runtime.starting;
+    try {
+      await runtime.starting;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      if (this.scheduleRetry(
+        input.threadId,
+        `start-${Date.now()}`,
+        "start_failed",
+        reason,
+        message,
+        runtime,
+        message.text
+      )) {
+        return { status: "queued", position: 1 };
+      }
+      throw error;
+    }
     return { status: "started" };
   }
 
@@ -319,9 +417,15 @@ export class ThreadService {
     if (!expectedTurnId || expectedTurnId !== runtime.activeTurnId) {
       return { interrupted: false, stale: true, source: "pocket" };
     }
+    this.manualInterruptTurns.add(String(runtime.activeTurnId));
     runtime.queuePaused = runtime.queue.length > 0;
     this.publishQueue(threadId, runtime);
-    await this.client.request("turn/interrupt", { threadId, turnId: runtime.activeTurnId });
+    try {
+      await this.client.request("turn/interrupt", { threadId, turnId: runtime.activeTurnId });
+    } catch (error) {
+      this.manualInterruptTurns.delete(String(runtime.activeTurnId));
+      throw error;
+    }
     return { interrupted: true, source: "pocket" };
   }
 
@@ -344,7 +448,9 @@ export class ThreadService {
       source: pocketActive ? "pocket" : foreignTurnActive || desktopActive ? "desktop" : null,
       steerable: Boolean(runtime.activeTurnId && pocketActive),
       queuePaused: runtime.queuePaused,
-      queue: [...runtime.queue]
+      queue: [...runtime.queue],
+      retryPolicy: this.getRetryPolicy(threadId),
+      retryStatus: runtime.retryStatus ? { ...runtime.retryStatus } : null
     };
   }
 
@@ -462,6 +568,9 @@ export class ThreadService {
       affected.add(thread.threadId);
       if (!thread.running && thread.terminalStatus === "aborted") {
         const runtime = this.runtime(thread.threadId);
+        if (runtime.activeTurnId && this.isPocketTurn(runtime)) {
+          this.manualInterruptTurns.add(String(runtime.activeTurnId));
+        }
         runtime.queuePaused = runtime.queue.length > 0;
         this.publishQueue(thread.threadId, runtime);
       }
@@ -630,7 +739,10 @@ export class ThreadService {
         queue: [],
         queuePaused: false,
         starting: null,
-        cwd: null
+        cwd: null,
+        retryStatus: null,
+        retryTimer: null,
+        retrySuppressed: false
       };
       this.runtimes.set(threadId, runtime);
     }
@@ -731,7 +843,24 @@ export class ThreadService {
     } else if (method === "turn/completed" && threadId) {
       const runtime = this.runtime(threadId);
       const turnId = value.turn?.id ?? value.turnId ?? runtime.activeTurnId;
-      this.events.publish("turn.completed", threadId, { ...value, turnId });
+      const completionKey = turnId ? `${threadId}:${String(turnId)}` : null;
+      if (completionKey && this.completedTurns.has(completionKey)) return;
+      if (completionKey) {
+        this.completedTurns.add(completionKey);
+        if (this.completedTurns.size > 10_000) {
+          const oldest = this.completedTurns.values().next().value;
+          if (oldest) this.completedTurns.delete(oldest);
+        }
+      }
+      const status = String(value.turn?.status ?? value.status ?? "completed");
+      const sourceMessage = turnId ? this.turnMessages.get(String(turnId)) : undefined;
+      const manuallyInterrupted = turnId ? this.manualInterruptTurns.delete(String(turnId)) : false;
+      const failure = status === "completed" ? null : {
+        status,
+        reason: this.failureReason(value, status, manuallyInterrupted),
+        manuallyInterrupted
+      };
+      this.events.publish("turn.completed", threadId, { ...value, turnId, failure });
       if (turnId && this.completedPlanTurns.delete(String(turnId))) {
         this.createPlanConfirmation(threadId, String(turnId), runtime);
       }
@@ -740,8 +869,31 @@ export class ThreadService {
         String(turnId) === String(runtime.activeTurnId);
       if (completesCurrentTurn) {
         runtime.activeTurnId = null;
-        const status = String(value.turn?.status ?? value.status ?? "completed");
-        if (status !== "completed" && runtime.queue.length > 0) runtime.queuePaused = true;
+        const retryScheduled = status !== "completed" && !manuallyInterrupted && sourceMessage
+          ? this.scheduleRetry(threadId, String(turnId ?? ""), status, failure!.reason, sourceMessage, runtime)
+          : false;
+        if (status === "completed" && runtime.retryStatus?.retryCount) {
+          runtime.retryStatus = {
+            ...runtime.retryStatus,
+            state: "succeeded",
+            turnId: String(turnId ?? runtime.retryStatus.turnId),
+            turnStatus: status,
+            scheduledAt: null
+          };
+          this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+        } else if (status !== "completed" && !retryScheduled && (!sourceMessage || manuallyInterrupted)) {
+          runtime.retryStatus = {
+            state: manuallyInterrupted ? "cancelled" : "failed",
+            turnId: String(turnId ?? ""),
+            turnStatus: status,
+            reason: failure!.reason,
+            retryCount: runtime.retryStatus?.retryCount ?? 0,
+            scheduledAt: null
+          };
+          this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+        } else if (status !== "completed" && !retryScheduled && runtime.queue.length > 0) {
+          runtime.queuePaused = true;
+        }
         for (const key of this.messagePhases.keys()) {
           if (key.startsWith(`${threadId}:`)) this.messagePhases.delete(key);
         }
@@ -749,7 +901,7 @@ export class ThreadService {
           if (key.startsWith(`${threadId}:`)) this.fileChangesByItem.delete(key);
         }
         this.publishQueue(threadId, runtime);
-        if (!runtime.queuePaused) void this.flushQueue(threadId, runtime);
+        if (!runtime.queuePaused && !retryScheduled) void this.flushQueue(threadId, runtime);
       }
     } else if (method === "item/agentMessage/delta" && threadId) {
       this.events.publish("message.delta", threadId, {
@@ -886,14 +1038,28 @@ export class ThreadService {
     const next = runtime.queue.shift();
     this.publishQueue(threadId, runtime);
     if (!next) return;
+    if (!next.clientMessageId.startsWith("retry-")) this.resetRetryChain(runtime);
     runtime.starting = this.startTurn(threadId, runtime, next)
       .catch((error) => {
-        runtime.queue.unshift(next);
-        runtime.queuePaused = true;
-        this.publishQueue(threadId, runtime);
+        const detail = error instanceof Error ? error.message : String(error);
+        const retryScheduled = this.scheduleRetry(
+          threadId,
+          `start-${Date.now()}`,
+          "start_failed",
+          detail,
+          next,
+          runtime,
+          next.text
+        );
+        if (!retryScheduled) {
+          runtime.queue.unshift(next);
+          runtime.queuePaused = true;
+          this.publishQueue(threadId, runtime);
+        }
         this.events.publish("queue.failed", threadId, {
           clientMessageId: next.clientMessageId,
-          error: error instanceof Error ? error.message : String(error)
+          error: detail,
+          retryScheduled
         });
       })
       .finally(() => {
@@ -901,6 +1067,86 @@ export class ThreadService {
         if (!runtime.activeTurnId && !runtime.queuePaused) void this.flushQueue(threadId, runtime);
       });
     await runtime.starting;
+  }
+
+  private scheduleRetry(
+    threadId: string,
+    turnId: string,
+    turnStatus: string,
+    reason: string,
+    source: QueuedMessage,
+    runtime: RuntimeThread,
+    retryText?: string
+  ): boolean {
+    const policy = this.getRetryPolicy(threadId);
+    const previousCount = runtime.retryStatus?.retryCount ?? 0;
+    const canRetry = shouldRetry(policy, previousCount, runtime.retrySuppressed);
+    runtime.retryStatus = {
+      state: canRetry
+        ? "scheduled"
+        : runtime.retrySuppressed
+          ? "cancelled"
+          : policy.enabled
+            ? "exhausted"
+            : "failed",
+      turnId,
+      turnStatus,
+      reason,
+      retryCount: previousCount,
+      scheduledAt: canRetry ? Date.now() + policy.delaySeconds * 1000 : null
+    };
+    if (!canRetry) {
+      this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+      return false;
+    }
+    runtime.queuePaused = false;
+    if (runtime.retryTimer) clearTimeout(runtime.retryTimer);
+    runtime.retryTimer = setTimeout(() => {
+      runtime.retryTimer = null;
+      if (runtime.retrySuppressed || !this.getRetryPolicy(threadId).enabled) return;
+      const attempt = (runtime.retryStatus?.retryCount ?? previousCount) + 1;
+      const retryMessage: QueuedMessage = {
+        ...source,
+        clientMessageId: `retry-${Date.now()}-${attempt}`,
+        text: retryText ?? this.getRetryPolicy(threadId).retryPrompt,
+        imagePaths: [],
+        mentionedFiles: [],
+        enqueuedAt: Date.now()
+      };
+      runtime.retryStatus = {
+        ...(runtime.retryStatus ?? { turnId, turnStatus, reason, retryCount: previousCount, scheduledAt: null }),
+        state: "retrying",
+        retryCount: attempt,
+        scheduledAt: null
+      };
+      runtime.queue.unshift(retryMessage);
+      this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+      this.publishQueue(threadId, runtime);
+      void this.flushQueue(threadId, runtime);
+    }, policy.delaySeconds * 1000);
+    runtime.retryTimer.unref();
+    this.events.publish("thread.retry.updated", threadId, this.getActivity(threadId));
+    return true;
+  }
+
+  private failureReason(value: Record<string, any>, status: string, manuallyInterrupted: boolean): string {
+    if (manuallyInterrupted) return "用户手动停止了本次任务";
+    const candidates = [value.turn?.error, value.error, value.turn?.reason, value.reason, value.message];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) return candidate.trim().slice(0, 2_000);
+      if (candidate && typeof candidate === "object") {
+        const message = candidate.message ?? candidate.detail ?? candidate.code;
+        if (typeof message === "string" && message.trim()) return message.trim().slice(0, 2_000);
+      }
+    }
+    return `任务以 ${status} 状态中断，Codex 未提供更详细的原因`;
+  }
+
+  private resetRetryChain(runtime: RuntimeThread): void {
+    if (runtime.retryTimer) clearTimeout(runtime.retryTimer);
+    runtime.retryTimer = null;
+    runtime.retrySuppressed = false;
+    runtime.retryStatus = null;
   }
 
   private normalizeTurn(threadId: string, turn: RawTurn, includeOperations: boolean): ChatRecord[] {
@@ -1043,7 +1289,10 @@ export class ThreadService {
         queue: [],
         queuePaused: false,
         starting: null,
-        cwd: null
+        cwd: null,
+        retryStatus: null,
+        retryTimer: null,
+        retrySuppressed: false
       };
       this.runtimes.set(threadId, runtime);
     }
@@ -1125,5 +1374,32 @@ export class ThreadService {
     const temporary = `${this.config.threadInstructionsFile}.tmp`;
     writeFileSync(temporary, JSON.stringify(Object.fromEntries(this.threadInstructions), null, 2), "utf8");
     renameSync(temporary, this.config.threadInstructionsFile);
+  }
+
+  private loadThreadRetryPolicies(): void {
+    try {
+      const parsed = JSON.parse(readFileSync(this.config.threadRetrySettingsFile, "utf8")) as Record<string, RetryPolicy>;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+      for (const [threadId, policy] of Object.entries(parsed)) {
+        if (policy && typeof policy === "object") this.threadRetryPolicies.set(threadId, {
+          enabled: Boolean(policy.enabled),
+          maxRetries: Math.max(1, Math.min(20, Math.trunc(policy.maxRetries || 3))),
+          untilSuccess: Boolean(policy.untilSuccess),
+          delaySeconds: Math.max(1, Math.min(300, Math.trunc(policy.delaySeconds || 5))),
+          retryPrompt: typeof policy.retryPrompt === "string" && policy.retryPrompt.trim()
+            ? policy.retryPrompt.trim().slice(0, MAX_RETRY_PROMPT_CHARS)
+            : DEFAULT_RETRY_PROMPT
+        });
+      }
+    } catch {
+      // First launch or a damaged optional preferences file uses safe defaults.
+    }
+  }
+
+  private persistThreadRetryPolicies(): void {
+    mkdirSync(dirname(this.config.threadRetrySettingsFile), { recursive: true });
+    const temporary = `${this.config.threadRetrySettingsFile}.tmp`;
+    writeFileSync(temporary, JSON.stringify(Object.fromEntries(this.threadRetryPolicies), null, 2), "utf8");
+    renameSync(temporary, this.config.threadRetrySettingsFile);
   }
 }

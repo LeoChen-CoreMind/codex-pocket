@@ -37,7 +37,31 @@ data class ThreadActivityDto(
     val steerable: Boolean = false,
     val queuePaused: Boolean = false,
     val queue: List<QueuedMessageDto> = emptyList(),
+    val retryPolicy: RetryPolicyDto = RetryPolicyDto(),
+    val retryStatus: RetryStatusDto? = null,
 )
+
+@Serializable
+data class RetryPolicyDto(
+    val enabled: Boolean = false,
+    val maxRetries: Int = 3,
+    val untilSuccess: Boolean = false,
+    val delaySeconds: Int = 5,
+    val retryPrompt: String = DEFAULT_RETRY_PROMPT,
+)
+
+@Serializable
+data class RetryStatusDto(
+    val state: String,
+    val turnId: String,
+    val turnStatus: String,
+    val reason: String,
+    val retryCount: Int = 0,
+    val scheduledAt: Long? = null,
+)
+
+@Serializable
+data class RetryPolicyResponse(val policy: RetryPolicyDto)
 
 @Serializable
 data class SubmitThreadMessageRequest(
@@ -143,4 +167,19 @@ class ThreadControlApi(private val client: HttpClient) {
             url { path("api/threads/$threadId/queue/resume") }
             setBody(EmptyJsonRequest())
         }.body()
+
+    suspend fun updateRetryPolicy(threadId: String, policy: RetryPolicyDto): RetryPolicyDto =
+        client.put {
+            url { path("api/threads/$threadId/retry") }
+            setBody(policy)
+        }.body<RetryPolicyResponse>().policy
+
+    suspend fun cancelRetry(threadId: String): ThreadActivityDto =
+        client.post {
+            url { path("api/threads/$threadId/retry/cancel") }
+            setBody(EmptyJsonRequest())
+        }.body()
 }
+
+const val DEFAULT_RETRY_PROMPT =
+    "刚才的任务异常中断。请先检查当前会话和工作区状态，从中断处继续，避免重复已经完成的操作。"

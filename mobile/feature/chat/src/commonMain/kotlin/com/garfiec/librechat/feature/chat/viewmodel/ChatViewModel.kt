@@ -47,6 +47,7 @@ import com.garfiec.librechat.core.model.permissions.hasAccessOrPermissive
 import com.garfiec.librechat.core.network.api.BridgeEventsApi
 import com.garfiec.librechat.core.network.api.DeliveryMode
 import com.garfiec.librechat.core.network.api.QueuedMessageDto
+import com.garfiec.librechat.core.network.api.RetryPolicyDto
 import com.garfiec.librechat.core.network.api.SubmitThreadMessageRequest
 import com.garfiec.librechat.core.network.api.ThreadActivityDto
 import com.garfiec.librechat.core.network.api.ThreadControlApi
@@ -888,7 +889,7 @@ class ChatViewModel(
         val params = state.modelParameters.dynamicValues
         val currentTurnId = if (deliveryMode == DeliveryMode.STEER) {
             runCatching { threadControlApi.activity(conversationId) }
-                .onSuccess(::applyThreadActivity)
+                .onSuccess { activity -> applyThreadActivity(activity) }
                 .getOrNull()
                 ?.turnId
                 ?: expectedTurnId
@@ -1585,6 +1586,12 @@ class ChatViewModel(
                                     markRemoteActive = consumeRemoteTurn,
                                 )
                             }
+                            "thread.retry.updated" -> if (payload != null) {
+                                applyThreadActivity(
+                                    json.decodeFromJsonElement<ThreadActivityDto>(payload),
+                                    markRemoteActive = consumeRemoteTurn,
+                                )
+                            }
                             "turn.started" -> {
                                 val eventTurnId = payload?.get("turnId")?.jsonPrimitive?.contentOrNull
                                 val nextTurnId = eventTurnId ?: remoteTurnId
@@ -1695,6 +1702,8 @@ class ChatViewModel(
                     bridgeQueueIds = projectedQueue.mapTo(linkedSetOf()) { it.localId },
                     activitySource = activity.source,
                     steerable = activity.steerable,
+                    retryPolicy = activity.retryPolicy,
+                    retryStatus = activity.retryStatus,
                 ),
                 content = state.content.copy(
                     isStreaming = activity.active || (preserveLocalActive && state.isStreaming),
@@ -2238,6 +2247,32 @@ class ChatViewModel(
             }.onFailure { cause ->
                 _uiState.update { it.copy(error = cause.message ?: "保存对话提示词失败") }
             }
+        }
+    }
+
+    fun setRetryPolicy(policy: RetryPolicyDto) {
+        val threadId = _uiState.value.conversationId ?: return
+        viewModelScope.launch {
+            runCatching { threadControlApi.updateRetryPolicy(threadId, policy) }
+                .onSuccess { saved ->
+                    _uiState.update { state ->
+                        state.copy(queue = state.queue.copy(retryPolicy = saved))
+                    }
+                }
+                .onFailure { cause ->
+                    _uiState.update { it.copy(error = cause.message ?: "保存自动重试设置失败") }
+                }
+        }
+    }
+
+    fun cancelAutomaticRetry() {
+        val threadId = _uiState.value.conversationId ?: return
+        viewModelScope.launch {
+            runCatching { threadControlApi.cancelRetry(threadId) }
+                .onSuccess { activity -> applyThreadActivity(activity) }
+                .onFailure { cause ->
+                    _uiState.update { it.copy(error = cause.message ?: "停止自动重试失败") }
+                }
         }
     }
 
