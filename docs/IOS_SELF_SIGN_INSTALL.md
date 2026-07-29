@@ -2,6 +2,8 @@
 
 GitHub Release 中的 `CodexPocket-iOS-unsigned-*.ipa` 是未签名安装包，不能直接在 iPhone 上安装。用户必须使用自己的 Apple ID 重新签名；Android 的 `chennb.jks` 证书不能用于 iOS。
 
+推荐直接使用 [Sideloadly](https://sideloadly.io/) 完成签名和安装，不需要 Xcode，也不建议使用无法正常获取 Apple `XcodeToken` 的旧版签名工具。
+
 ## 安装前检查
 
 1. 下载 IPA 和同一 Release 中的 `SHA256SUMS.txt`。
@@ -15,12 +17,13 @@ GitHub Release 中的 `CodexPocket-iOS-unsigned-*.ipa` 是未签名安装包，�
 
 ## Windows + Sideloadly
 
-1. 从 Apple 官网安装非 Microsoft Store 版 iTunes 和 iCloud，并登录 iCloud。
-2. 安装 Sideloadly，用数据线连接 iPhone；在手机上选择“信任此电脑”。
-3. 把未签名 IPA 拖入 Sideloadly，选择已连接的 iPhone，输入用于自签的 Apple ID 后开始安装。
-4. iOS 16 或更高版本需要在“设置 > 隐私与安全性 > 开发者模式”中启用开发者模式并重启。
-5. 如系统要求信任证书，打开“设置 > 通用 > VPN 与设备管理”，选择该 Apple ID 对应的开发者 App 并信任。
-6. 回到桌面启动 Codex Pocket。
+1. 从 [Sideloadly 官方网站](https://sideloadly.io/) 下载并安装最新版。
+2. 从 Apple 官网安装非 Microsoft Store 版 iTunes 和 iCloud，并登录 iCloud。
+3. 打开 Sideloadly，用数据线连接 iPhone；在手机上选择“信任此电脑”。
+4. 把未签名 IPA 拖入 Sideloadly，选择已连接的 iPhone，输入用于自签的 Apple ID 后开始安装。
+5. iOS 16 或更高版本需要在“设置 > 隐私与安全性 > 开发者模式”中启用开发者模式并重启。
+6. 成功安装并点击一次 Codex Pocket 后，如系统提示未受信任，打开“设置 > 通用 > VPN 与设备管理”，选择该 Apple ID 对应的开发者 App 并信任。签名或安装失败时不会出现这个入口。
+7. 回到桌面启动 Codex Pocket。
 
 ## Windows + AltStore
 
