@@ -30,7 +30,10 @@ function extensionDirectories(): string[] {
   const userProfile = process.env.USERPROFILE;
   if (!userProfile) return [];
 
+  const configured = process.env.BRIDGE_EDITOR_EXTENSIONS?.trim();
+  const configuredDirectory = configured ? resolve(configured) : null;
   const directories = [
+    ...(configuredDirectory ? [configuredDirectory] : []),
     join(userProfile, ".vscode", "extensions"),
     join(userProfile, ".vscode-insiders", "extensions"),
     join(userProfile, ".cursor", "extensions"),
@@ -49,7 +52,8 @@ function extensionDirectories(): string[] {
         : hostExecutable.includes("insiders")
           ? ".vscode-insiders"
           : ".vscode";
-  return directories.sort((left, right) =>
+  return [...new Set(directories)].sort((left, right) =>
+    Number(right === configuredDirectory) - Number(left === configuredDirectory) ||
     Number(right.toLocaleLowerCase("en-US").includes(preferredMarker)) -
     Number(left.toLocaleLowerCase("en-US").includes(preferredMarker))
   );

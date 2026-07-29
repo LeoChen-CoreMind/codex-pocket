@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.NetworkInformation;
@@ -14,10 +15,14 @@ internal sealed record HostProcess(int Id, string Name, string Title, string Pat
     public override string ToString() => $"{Name}  PID {Id}  {Title}";
 }
 
+internal sealed record EditorProduct(string? ApplicationName, string? DataFolderName);
+
 internal sealed record BridgeConfig(
     int Port = 47831,
     int? HostProcessId = null,
     string? HostExecutable = null,
+    string? EditorCli = null,
+    string? EditorExtensions = null,
     string? FrpcExecutable = null,
     string? FrpcConfig = null
 );
@@ -41,6 +46,8 @@ internal sealed class MainForm : Form
     private readonly TextBox bridgePidValue = ReadOnlyBox();
     private readonly ComboBox hostValue = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 620 };
     private readonly TextBox executableValue = new() { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
+    private readonly TextBox editorCliValue = new() { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
+    private readonly TextBox extensionDirectoryValue = new() { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
     private readonly TextBox monitoredProcessValue = ReadOnlyBox();
     private readonly TextBox editorValue = ReadOnlyBox(multiline: true);
     private readonly TextBox conversationValue = ReadOnlyBox();
@@ -53,6 +60,9 @@ internal sealed class MainForm : Form
     private readonly Button regenerateButton = new() { Text = "重新生成密钥", AutoSize = true };
     private readonly Button refreshButton = new() { Text = "刷新进程", AutoSize = true };
     private readonly Button browseButton = new() { Text = "选择编辑器 EXE", AutoSize = true };
+    private readonly Button analyzeEditorButton = new() { Text = "自动分析配置", AutoSize = true };
+    private readonly Button browseEditorCliButton = new() { Text = "选择 CLI", AutoSize = true };
+    private readonly Button browseExtensionDirectoryButton = new() { Text = "选择扩展目录", AutoSize = true };
     private readonly Button firewallButton = new() { Text = "安装局域网防火墙规则", AutoSize = true };
     private readonly Button browseFrpcButton = new() { Text = "选择 frpc.exe", AutoSize = true };
     private readonly Button browseFrpcConfigButton = new() { Text = "选择 FRP 配置", AutoSize = true };
@@ -69,10 +79,12 @@ internal sealed class MainForm : Form
     private int? configuredHostProcessId;
     private bool serviceOnline;
     private bool refreshing;
+    private bool refreshingProcesses;
 
     private string ConfigPath => Path.Combine(stateDirectory, "bridge-config.json");
     private string TokenPath => Path.Combine(stateDirectory, "bridge.token");
     private string BridgePidPath => Path.Combine(stateDirectory, "bridge.pid");
+    private string BridgeRuntimePath => Path.Combine(stateDirectory, "bridge-runtime.txt");
     private string FrpPidPath => Path.Combine(stateDirectory, "frpc.pid");
     private string LocalBaseUrl => $"http://127.0.0.1:{(int)portValue.Value}";
 
@@ -90,7 +102,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Top,
             Padding = new Padding(24),
             ColumnCount = 2,
-            RowCount = 19,
+            RowCount = 21,
             AutoSize = true,
         };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
@@ -108,27 +120,29 @@ internal sealed class MainForm : Form
         AddRow(content, 6, "访问密钥", tokenValue);
         AddRow(content, 7, "监听程序", hostValue);
         AddRow(content, 8, "程序路径", executableValue);
-        AddRow(content, 9, "进程状态", monitoredProcessValue);
-        AddRow(content, 10, "在线编辑器", editorValue, 108);
-        AddRow(content, 11, "在线对话", conversationValue);
-        AddRow(content, 12, "FTP 状态", ftpValue);
-        AddRow(content, 13, "FRP 状态", frpStatusValue);
-        AddRow(content, 14, "FRP 程序", frpcExecutableValue);
-        AddRow(content, 15, "FRP 配置", frpcConfigValue);
+        AddRow(content, 9, "编辑器 CLI", InputWithButton(editorCliValue, browseEditorCliButton));
+        AddRow(content, 10, "扩展目录", InputWithButton(extensionDirectoryValue, browseExtensionDirectoryButton));
+        AddRow(content, 11, "进程状态", monitoredProcessValue);
+        AddRow(content, 12, "在线编辑器", editorValue, 108);
+        AddRow(content, 13, "在线对话", conversationValue);
+        AddRow(content, 14, "FTP 状态", ftpValue);
+        AddRow(content, 15, "FRP 状态", frpStatusValue);
+        AddRow(content, 16, "FRP 程序", frpcExecutableValue);
+        AddRow(content, 17, "FRP 配置", frpcConfigValue);
 
-        var hostActions = ActionRow(refreshButton, browseButton, new Label {
+        var hostActions = ActionRow(refreshButton, browseButton, analyzeEditorButton, new Label {
             Text = "支持 VS Code、Antigravity、Cursor、Windsurf 等 Code 系程序",
             AutoSize = true,
             Padding = new Padding(8, 7, 0, 0),
         });
-        content.Controls.Add(hostActions, 1, 16);
+        content.Controls.Add(hostActions, 1, 18);
 
         var bridgeActions = ActionRow(startButton, stopButton, regenerateButton, copyButton, firewallButton, openStateButton);
         bridgeActions.Padding = new Padding(0, 10, 0, 0);
-        content.Controls.Add(bridgeActions, 1, 17);
+        content.Controls.Add(bridgeActions, 1, 19);
 
         var frpActions = ActionRow(browseFrpcButton, browseFrpcConfigButton, startFrpButton, stopFrpButton);
-        content.Controls.Add(frpActions, 1, 18);
+        content.Controls.Add(frpActions, 1, 20);
 
         ipValue.Text = GetLanIp();
         LoadConfig();
@@ -143,6 +157,9 @@ internal sealed class MainForm : Form
         copyButton.Click += (_, _) => CopyConnectionInfo();
         refreshButton.Click += (_, _) => RefreshProcesses();
         browseButton.Click += (_, _) => BrowseExecutable();
+        analyzeEditorButton.Click += (_, _) => AnalyzeSelectedEditor(showResult: true);
+        browseEditorCliButton.Click += (_, _) => BrowseEditorCli();
+        browseExtensionDirectoryButton.Click += (_, _) => BrowseExtensionDirectory();
         firewallButton.Click += async (_, _) => await InstallFirewallRule();
         openStateButton.Click += (_, _) => Process.Start(new ProcessStartInfo(stateDirectory) { UseShellExecute = true });
         browseFrpcButton.Click += (_, _) => BrowseFrpcExecutable();
@@ -150,7 +167,9 @@ internal sealed class MainForm : Form
         startFrpButton.Click += async (_, _) => await StartFrp();
         stopFrpButton.Click += (_, _) => StopFrp();
         portValue.ValueChanged += (_, _) => RefreshEndpoint();
-        hostValue.SelectedIndexChanged += (_, _) => UpdateSelectedHost();
+        hostValue.SelectedIndexChanged += (_, _) => {
+            if (!refreshingProcesses) UpdateSelectedHost();
+        };
         statusTimer.Tick += async (_, _) => await RefreshStatus();
         statusTimer.Start();
         Shown += async (_, _) => await RefreshStatus();
@@ -185,6 +204,17 @@ internal sealed class MainForm : Form
         return panel;
     }
 
+    private static TableLayoutPanel InputWithButton(TextBox input, Button button)
+    {
+        var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        input.Margin = new Padding(0, 3, 8, 3);
+        panel.Controls.Add(input, 0, 0);
+        panel.Controls.Add(button, 1, 0);
+        return panel;
+    }
+
     private static void AddRow(
         TableLayoutPanel panel,
         int row,
@@ -208,6 +238,8 @@ internal sealed class MainForm : Form
             if (config.Port is >= 1024 and <= 65535) portValue.Value = config.Port;
             configuredHostProcessId = config.HostProcessId;
             executableValue.Text = config.HostExecutable ?? "";
+            editorCliValue.Text = config.EditorCli ?? "";
+            extensionDirectoryValue.Text = config.EditorExtensions ?? "";
             frpcExecutableValue.Text = config.FrpcExecutable ?? "";
             frpcConfigValue.Text = config.FrpcConfig ?? "";
         } catch { }
@@ -221,6 +253,8 @@ internal sealed class MainForm : Form
             Port: (int)portValue.Value,
             HostProcessId: selected?.Id ?? configuredHostProcessId,
             HostExecutable: NullIfBlank(executableValue.Text),
+            EditorCli: NullIfBlank(editorCliValue.Text),
+            EditorExtensions: NullIfBlank(extensionDirectoryValue.Text),
             FrpcExecutable: NullIfBlank(frpcExecutableValue.Text),
             FrpcConfig: NullIfBlank(frpcConfigValue.Text)
         );
@@ -237,9 +271,14 @@ internal sealed class MainForm : Form
             .OrderBy(item => item.Name)
             .ThenBy(item => item.Title)
             .ToList();
-        hostValue.DataSource = candidates;
-        hostValue.SelectedItem = candidates.FirstOrDefault(item => item.Id == selectedId)
-            ?? candidates.FirstOrDefault(item => PathsEqual(item.Path, selectedPath));
+        refreshingProcesses = true;
+        try {
+            hostValue.DataSource = candidates;
+            hostValue.SelectedItem = candidates.FirstOrDefault(item => item.Id == selectedId)
+                ?? candidates.FirstOrDefault(item => PathsEqual(item.Path, selectedPath));
+        } finally {
+            refreshingProcesses = false;
+        }
         configuredHostProcessId = (hostValue.SelectedItem as HostProcess)?.Id;
         UpdateSelectedHost();
     }
@@ -253,7 +292,8 @@ internal sealed class MainForm : Form
             var codeBased = name.Contains("code", StringComparison.OrdinalIgnoreCase) ||
                 name.Contains("antigravity", StringComparison.OrdinalIgnoreCase) ||
                 name.Contains("cursor", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("windsurf", StringComparison.OrdinalIgnoreCase);
+                name.Contains("windsurf", StringComparison.OrdinalIgnoreCase) ||
+                IsCodeEditorInstallation(path);
             return codeBased && !string.IsNullOrWhiteSpace(title)
                 ? new HostProcess(process.Id, name, title, path)
                 : null;
@@ -268,7 +308,12 @@ internal sealed class MainForm : Form
             monitoredProcessValue.Text = "未选择正在运行的兼容编辑器";
             return;
         }
+        var executableChanged = !PathsEqual(executableValue.Text, process.Path);
         executableValue.Text = process.Path;
+        if (executableChanged || string.IsNullOrWhiteSpace(editorCliValue.Text) ||
+            string.IsNullOrWhiteSpace(extensionDirectoryValue.Text)) {
+            AnalyzeEditor(process.Path, overwrite: executableChanged);
+        }
         configuredHostProcessId = process.Id;
         monitoredProcessValue.Text = $"在线 · {process.Name} · PID {process.Id} · {process.Title}";
     }
@@ -282,8 +327,157 @@ internal sealed class MainForm : Form
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         executableValue.Text = dialog.FileName;
+        AnalyzeEditor(dialog.FileName, overwrite: true);
         RefreshProcesses();
     }
+
+    private void BrowseEditorCli()
+    {
+        using var dialog = new OpenFileDialog {
+            Filter = "编辑器命令行 (*.cmd;*.bat;*.exe)|*.cmd;*.bat;*.exe|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+            Title = "选择编辑器官方命令行工具",
+        };
+        if (dialog.ShowDialog(this) == DialogResult.OK) editorCliValue.Text = dialog.FileName;
+    }
+
+    private void BrowseExtensionDirectory()
+    {
+        using var dialog = new FolderBrowserDialog {
+            Description = "选择编辑器的 extensions 目录",
+            UseDescriptionForTitle = true,
+            SelectedPath = Directory.Exists(extensionDirectoryValue.Text) ? extensionDirectoryValue.Text : "",
+        };
+        if (dialog.ShowDialog(this) == DialogResult.OK) extensionDirectoryValue.Text = dialog.SelectedPath;
+    }
+
+    private void AnalyzeSelectedEditor(bool showResult)
+    {
+        var executable = executableValue.Text.Trim();
+        if (!File.Exists(executable)) {
+            if (showResult) MessageBox.Show(this, "请先选择有效的编辑器 EXE。", "自动分析配置");
+            return;
+        }
+        AnalyzeEditor(executable, overwrite: true);
+        if (showResult) {
+            MessageBox.Show(
+                this,
+                $"编辑器 CLI：{NullIfBlank(editorCliValue.Text) ?? "未找到，请手动选择"}{Environment.NewLine}" +
+                $"扩展目录：{NullIfBlank(extensionDirectoryValue.Text) ?? "未找到，请手动选择"}",
+                "自动分析配置",
+                MessageBoxButtons.OK,
+                string.IsNullOrWhiteSpace(editorCliValue.Text) || string.IsNullOrWhiteSpace(extensionDirectoryValue.Text)
+                    ? MessageBoxIcon.Warning
+                    : MessageBoxIcon.Information
+            );
+        }
+    }
+
+    private void AnalyzeEditor(string executable, bool overwrite)
+    {
+        var product = ReadEditorProduct(executable);
+        var cli = DiscoverEditorCli(executable, product.ApplicationName);
+        var extensions = DiscoverExtensionDirectory(product.DataFolderName);
+        if (overwrite || string.IsNullOrWhiteSpace(editorCliValue.Text)) editorCliValue.Text = cli ?? "";
+        if (overwrite || string.IsNullOrWhiteSpace(extensionDirectoryValue.Text)) {
+            extensionDirectoryValue.Text = extensions ?? "";
+        }
+    }
+
+    private static EditorProduct ReadEditorProduct(string executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable)) return new EditorProduct(null, null);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(executable));
+        if (directory is null) return new EditorProduct(null, null);
+        var candidates = new[] {
+            Path.Combine(directory, "resources", "app", "product.json"),
+            Path.Combine(directory, "product.json"),
+            Path.Combine(Directory.GetParent(directory)?.FullName ?? directory, "resources", "app", "product.json"),
+        };
+        foreach (var path in candidates.Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists)) {
+            try {
+                using var document = JsonDocument.Parse(
+                    File.ReadAllText(path),
+                    new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }
+                );
+                var root = document.RootElement;
+                return new EditorProduct(
+                    JsonString(root, "applicationName"),
+                    JsonString(root, "dataFolderName")
+                );
+            } catch { }
+        }
+        return new EditorProduct(null, null);
+    }
+
+    private static string? DiscoverEditorCli(string executable, string? applicationName)
+    {
+        if (string.IsNullOrWhiteSpace(executable)) return null;
+        var directory = Path.GetDirectoryName(Path.GetFullPath(executable));
+        if (directory is null) return null;
+        var cliDirectories = new[] {
+            Path.Combine(directory, "bin"),
+            Path.Combine(directory, "resources", "app", "bin"),
+        }.Distinct(StringComparer.OrdinalIgnoreCase).Where(Directory.Exists).ToList();
+        var preferredNames = new[] {
+            NullIfBlank(applicationName) is string app ? $"{app}.cmd" : null,
+            $"{Path.GetFileNameWithoutExtension(executable).Replace(" ", "-").ToLowerInvariant()}.cmd",
+        }.Where(name => name is not null).Cast<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        foreach (var name in preferredNames) {
+            var exact = cliDirectories.Select(directoryPath => Path.Combine(directoryPath, name)).FirstOrDefault(File.Exists);
+            if (exact is not null) return exact;
+        }
+        return cliDirectories
+            .SelectMany(directoryPath => Directory.EnumerateFiles(directoryPath, "*.cmd"))
+            .Where(path => !Path.GetFileName(path).Contains("tunnel", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(path => Path.GetFileName(path).Length)
+            .FirstOrDefault();
+    }
+
+    private static string? DiscoverExtensionDirectory(string? dataFolderName)
+    {
+        var folderName = NullIfBlank(dataFolderName);
+        if (folderName is null) return null;
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var dataDirectory = Path.IsPathRooted(folderName) ? folderName : Path.Combine(profile, folderName);
+        var configured = ExtensionDirectoryFromArgv(Path.Combine(dataDirectory, "argv.json"), dataDirectory);
+        return configured ?? Path.Combine(dataDirectory, "extensions");
+    }
+
+    private static string? ExtensionDirectoryFromArgv(string argvPath, string dataDirectory)
+    {
+        if (!File.Exists(argvPath)) return null;
+        try {
+            using var document = JsonDocument.Parse(
+                File.ReadAllText(argvPath),
+                new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }
+            );
+            var configured = JsonString(document.RootElement, "extensions-dir")
+                ?? JsonString(document.RootElement, "extensionsDir")
+                ?? JsonString(document.RootElement, "extensionsDirectory");
+            if (configured is null) return null;
+            var expanded = Environment.ExpandEnvironmentVariables(configured);
+            return Path.GetFullPath(Path.IsPathRooted(expanded) ? expanded : Path.Combine(dataDirectory, expanded));
+        } catch {
+            return null;
+        }
+    }
+
+    private static bool IsCodeEditorInstallation(string executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable)) return false;
+        var directory = Path.GetDirectoryName(executable);
+        return directory is not null &&
+            File.Exists(Path.Combine(directory, "resources", "app", "product.json")) &&
+            File.Exists(Path.Combine(directory, "resources", "app", "out", "cli.js"));
+    }
+
+    private static string? JsonString(JsonElement element, string name) =>
+        element.ValueKind == JsonValueKind.Object &&
+        element.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.String
+            ? NullIfBlank(value.GetString() ?? "")
+            : null;
 
     private void BrowseFrpcExecutable()
     {
@@ -311,11 +505,13 @@ internal sealed class MainForm : Form
         try {
             SaveConfig();
             EnsureToken();
-            await StopBridge(showErrors: false);
             var host = ResolveConfiguredHost();
             if (host is null) throw new InvalidOperationException("选择的兼容编辑器没有运行，请刷新进程后重新选择");
+            var companionRepaired = !CompanionInstallIsCurrent(host);
+            if (companionRepaired) await InstallCompanion(host);
+            await StopBridge(showErrors: false);
 
-            var info = new ProcessStartInfo(runtime.NodePath) {
+            var info = new ProcessStartInfo(host.Path) {
                 WorkingDirectory = runtime.Directory,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -326,12 +522,17 @@ internal sealed class MainForm : Form
             info.Environment["BRIDGE_API_TOKEN"] = File.ReadAllText(TokenPath).Trim();
             info.Environment["BRIDGE_HOST_PROCESS_ID"] = host.Id.ToString();
             info.Environment["BRIDGE_HOST_EXECUTABLE"] = host.Path;
+            if (!string.IsNullOrWhiteSpace(extensionDirectoryValue.Text)) {
+                info.Environment["BRIDGE_EDITOR_EXTENSIONS"] = extensionDirectoryValue.Text.Trim();
+            }
             info.Environment["BRIDGE_JSON_WORKER"] = runtime.WorkerPath;
             info.Environment["BRIDGE_CODEX_PROXY"] = runtime.ProxyPath;
+            info.Environment["ELECTRON_RUN_AS_NODE"] = "1";
             info.Environment["NODE_NO_WARNINGS"] = "1";
 
             var process = Process.Start(info) ?? throw new InvalidOperationException("无法启动内置 Bridge 运行时");
             File.WriteAllText(BridgePidPath, process.Id.ToString());
+            File.WriteAllText(BridgeRuntimePath, host.Path);
             var ready = false;
             for (var attempt = 0; attempt < 40; attempt++) {
                 await Task.Delay(500);
@@ -344,9 +545,19 @@ internal sealed class MainForm : Form
             if (!ready) {
                 if (!process.HasExited) process.Kill(entireProcessTree: true);
                 File.Delete(BridgePidPath);
+                File.Delete(BridgeRuntimePath);
                 throw new InvalidOperationException("Bridge 未能在 20 秒内就绪");
             }
             await RefreshStatus();
+            if (companionRepaired) {
+                MessageBox.Show(
+                    this,
+                    "已通过编辑器官方命令安装或修复 Codex Pocket Companion。请在目标编辑器的命令面板执行一次“Developer: Reload Window”，窗口随后会自动出现在在线列表中。",
+                    "Companion 已修复",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+            }
         } catch (Exception error) {
             MessageBox.Show(this, error.Message, "Bridge 启动失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
         } finally {
@@ -364,6 +575,70 @@ internal sealed class MainForm : Form
             .FirstOrDefault(item => item is not null && PathsEqual(item.Path, executable));
     }
 
+    private bool CompanionInstallIsCurrent(HostProcess host)
+    {
+        try {
+            using var archive = ZipFile.OpenRead(runtime.CompanionPath);
+            var entry = archive.GetEntry("extension/extension.js")
+                ?? archive.GetEntry("extension\\extension.js");
+            if (entry is null) return false;
+            using var bundledSource = entry.Open();
+            var bundledHash = SHA256.HashData(bundledSource);
+            return CompanionExtensionRoots(host.Path)
+                .Where(Directory.Exists)
+                .SelectMany(root => Directory.EnumerateDirectories(root, "leochen.codex-pocket-companion-*"))
+                .Select(directory => Path.Combine(directory, "extension.js"))
+                .Where(File.Exists)
+                .Any(installed => SHA256.HashData(File.ReadAllBytes(installed)).AsSpan().SequenceEqual(bundledHash));
+        } catch {
+            return false;
+        }
+    }
+
+    private IEnumerable<string> CompanionExtensionRoots(string executable)
+    {
+        var configured = NullIfBlank(extensionDirectoryValue.Text);
+        if (configured is not null) yield return configured;
+        var discovered = DiscoverExtensionDirectory(ReadEditorProduct(executable).DataFolderName);
+        if (discovered is not null && !PathsEqual(discovered, configured)) yield return discovered;
+    }
+
+    private async Task InstallCompanion(HostProcess host)
+    {
+        var cli = FindEditorCli(host.Path)
+            ?? throw new FileNotFoundException(
+                "找不到所选编辑器的官方命令行工具，无法安装 Codex Pocket Companion。请确认选择的是编辑器主程序。",
+                host.Path
+            );
+        var info = new ProcessStartInfo(cli) {
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
+        };
+        var extensionsDirectory = NullIfBlank(extensionDirectoryValue.Text);
+        if (extensionsDirectory is not null) {
+            info.ArgumentList.Add("--extensions-dir");
+            info.ArgumentList.Add(extensionsDirectory);
+        }
+        info.ArgumentList.Add("--install-extension");
+        info.ArgumentList.Add(runtime.CompanionPath);
+        info.ArgumentList.Add("--force");
+        using var process = Process.Start(info)
+            ?? throw new InvalidOperationException("无法启动编辑器的 Companion 安装命令");
+        await process.WaitForExitAsync();
+        if (process.ExitCode != 0) {
+            throw new InvalidOperationException(
+                $"Codex Pocket Companion 安装失败（退出码 {process.ExitCode}）：{cli}"
+            );
+        }
+    }
+
+    private string? FindEditorCli(string executable)
+    {
+        var configured = NullIfBlank(editorCliValue.Text);
+        if (configured is not null && File.Exists(configured)) return configured;
+        return DiscoverEditorCli(executable, ReadEditorProduct(executable).ApplicationName);
+    }
+
     private async Task StopBridge(bool showErrors)
     {
         try {
@@ -374,11 +649,17 @@ internal sealed class MainForm : Form
             var pid = ReadPid(BridgePidPath);
             if (pid is not null) {
                 for (var attempt = 0; attempt < 20 && ProcessExists(pid.Value); attempt++) await Task.Delay(250);
-                if (ProcessExists(pid.Value) && IsExpectedProcess(pid.Value, runtime.NodePath)) {
+                var expectedRuntime = File.Exists(BridgeRuntimePath)
+                    ? File.ReadAllText(BridgeRuntimePath).Trim()
+                    : executableValue.Text.Trim();
+                var legacyNode = Path.Combine(runtime.Directory, "node.exe");
+                if (ProcessExists(pid.Value) &&
+                    (IsExpectedProcess(pid.Value, expectedRuntime) || IsExpectedProcess(pid.Value, legacyNode))) {
                     Process.GetProcessById(pid.Value).Kill(entireProcessTree: true);
                 }
             }
             if (File.Exists(BridgePidPath)) File.Delete(BridgePidPath);
+            if (File.Exists(BridgeRuntimePath)) File.Delete(BridgeRuntimePath);
             await RefreshStatus();
         } catch (Exception error) {
             if (showErrors) {
@@ -649,7 +930,7 @@ internal sealed class MainForm : Form
         }
     }
 
-    private static string? NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static int? ReadPid(string path) => File.Exists(path) && int.TryParse(File.ReadAllText(path), out var pid) ? pid : null;
 
@@ -706,10 +987,10 @@ internal sealed class MainForm : Form
 
 internal sealed record RuntimeAssets(
     string Directory,
-    string NodePath,
     string BridgePath,
     string WorkerPath,
-    string ProxyPath
+    string ProxyPath,
+    string CompanionPath
 )
 {
     private const string Prefix = "CodexPocketBridge.Runtime.";
@@ -719,16 +1000,22 @@ internal sealed record RuntimeAssets(
         var directory = Path.Combine(stateDirectory, "runtime");
         System.IO.Directory.CreateDirectory(directory);
         var assembly = Assembly.GetExecutingAssembly();
-        ExtractResource(assembly, Prefix + "node.exe", Path.Combine(directory, "node.exe"));
         ExtractResource(assembly, Prefix + "bridge.cjs", Path.Combine(directory, "bridge.cjs"));
         ExtractResource(assembly, Prefix + "json-parser.worker.cjs", Path.Combine(directory, "json-parser.worker.cjs"));
         var proxyPath = ExtractVersionedResource(assembly, Prefix + "codex-proxy.exe", directory, "codex-proxy", ".exe");
+        var companionPath = ExtractVersionedResource(
+            assembly,
+            Prefix + "codex-pocket-companion.vsix",
+            directory,
+            "codex-pocket-companion",
+            ".vsix"
+        );
         return new RuntimeAssets(
             directory,
-            Path.Combine(directory, "node.exe"),
             Path.Combine(directory, "bridge.cjs"),
             Path.Combine(directory, "json-parser.worker.cjs"),
-            proxyPath
+            proxyPath,
+            companionPath
         );
     }
 

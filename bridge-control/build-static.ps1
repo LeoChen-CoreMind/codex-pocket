@@ -8,10 +8,13 @@ $publishDirectory = Join-Path $controlDirectory "publish-static"
 $esbuild = Join-Path $bridgeDirectory "node_modules\.bin\esbuild.cmd"
 $proxyDirectory = Join-Path $bridgeDirectory "proxy"
 $proxyOutput = Join-Path $runtimeDirectory "codex-proxy.exe"
-$node = (Get-Command node.exe -ErrorAction Stop).Source
+$companionDirectory = Join-Path $rootDirectory "vscode-companion"
+$companionOutput = Join-Path $runtimeDirectory "codex-pocket-companion.vsix"
 $go = (Get-Command go.exe -ErrorAction Stop).Source
 
 New-Item -ItemType Directory -Path $runtimeDirectory -Force | Out-Null
+
+& (Join-Path $companionDirectory "package.ps1") -OutputPath $companionOutput
 
 Push-Location $bridgeDirectory
 try {
@@ -28,8 +31,6 @@ try {
 } finally {
     Pop-Location
 }
-
-Copy-Item -LiteralPath $node -Destination (Join-Path $runtimeDirectory "node.exe") -Force
 
 Push-Location $proxyDirectory
 try {
