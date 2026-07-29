@@ -235,8 +235,8 @@ fun DrawerContent(
             DrawerFooterItem(
                 icon = Icons.Default.Computer,
                 label = vscodeState.boundInstance?.let { instance ->
-                    "VS Code · ${instance.workspaceName ?: instance.windowTitle}"
-                } ?: "选择 VS Code 窗口",
+                    "${instance.editorName} · ${instance.workspaceName ?: instance.windowTitle}"
+                } ?: "选择编辑器窗口",
                 onClick = {
                     vscodeViewModel.refresh()
                     showVsCodePicker = true
@@ -356,7 +356,7 @@ private fun VsCodeInstancePicker(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("绑定 VS Code 窗口") },
+        title = { Text("绑定编辑器窗口") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 when {
@@ -364,7 +364,7 @@ private fun VsCodeInstancePicker(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                     }
                     state.instances.isEmpty() -> {
-                        Text("没有检测到 Companion 扩展，请先在目标 VS Code 窗口安装并启用扩展。")
+                        Text("没有检测到在线 Companion。请确认目标编辑器已安装并激活扩展；刚完成安装时可能需要重新加载一次编辑器窗口。")
                     }
                     else -> state.instances.forEach { instance ->
                         Row(

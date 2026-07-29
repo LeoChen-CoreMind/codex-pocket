@@ -549,13 +549,16 @@ internal sealed class MainForm : Form
                 throw new InvalidOperationException("Bridge 未能在 20 秒内就绪");
             }
             await RefreshStatus();
-            if (companionRepaired) {
+            var editorOnline = await WaitForOnlineEditor(host.Id, TimeSpan.FromSeconds(8));
+            if (!editorOnline) {
                 MessageBox.Show(
                     this,
-                    "已通过编辑器官方命令安装或修复 Codex Pocket Companion。请在目标编辑器的命令面板执行一次“Developer: Reload Window”，窗口随后会自动出现在在线列表中。",
-                    "Companion 已修复",
+                    companionRepaired
+                        ? "Companion 已通过编辑器官方命令安装或修复，但目标窗口尚未完成注册。请在目标编辑器执行一次“Developer: Reload Window”，然后点击刷新。"
+                        : "Companion 已安装，但目标窗口尚未在线。请确认扩展已启用；必要时在目标编辑器执行一次“Developer: Reload Window”。",
+                    "等待编辑器窗口",
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Information
+                    MessageBoxIcon.Warning
                 );
             }
         } catch (Exception error) {
@@ -573,6 +576,24 @@ internal sealed class MainForm : Form
         if (!File.Exists(executable)) return null;
         return Process.GetProcesses().Select(ToHostProcess)
             .FirstOrDefault(item => item is not null && PathsEqual(item.Path, executable));
+    }
+
+    private async Task<bool> WaitForOnlineEditor(int processId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        do {
+            try {
+                using var document = await GetJson("/api/vscode/instances");
+                if (ArrayPayload(document.RootElement).EnumerateArray().Any(item =>
+                    BoolProperty(item, "online") &&
+                    item.TryGetProperty("processId", out var value) &&
+                    value.TryGetInt32(out var registeredProcessId) &&
+                    registeredProcessId == processId
+                )) return true;
+            } catch { }
+            await Task.Delay(500);
+        } while (DateTime.UtcNow < deadline);
+        return false;
     }
 
     private bool CompanionInstallIsCurrent(HostProcess host)

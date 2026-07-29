@@ -2,9 +2,12 @@
   "name": "codex-pocket-companion",
   "displayName": "Codex Pocket Companion",
   "description": "Binds one VS Code window to Codex Pocket.",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "publisher": "leochen",
   "license": "MIT",
+  "scripts": {
+    "test": "node --test extension.test.js"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -12,7 +15,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "*"
   ],
   "main": "./extension.js",
   "contributes": {

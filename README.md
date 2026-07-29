@@ -162,7 +162,7 @@ Set-Location ..\vscode-companion
 .\install.ps1
 ```
 
-安装脚本会打包 Companion，并通过 VS Code、Cursor、Windsurf 或 Antigravity 自带的官方命令行工具安装，不依赖源码目录位置。完成后重新加载每个编辑器窗口一次。打开 Codex 会话后，控制器和 APP 才能识别对应的在线窗口。
+安装脚本会打包 Companion，并通过 VS Code、Cursor、Windsurf 或 Antigravity 自带的官方命令行工具安装，不依赖源码目录位置。Companion 会请求热激活；只有编辑器未接受热更新时才需要重新加载一次窗口。打开 Codex 会话后，控制器和 APP 即可识别对应的在线窗口。
 
 脚本会读取编辑器安装目录中的 `product.json` 自动发现 CLI。自动发现失败或编辑器使用自定义扩展目录时，可明确指定：
 
@@ -183,7 +183,7 @@ Set-Location ..\bridge-control
 bridge-control/publish-static/CodexPocketBridge.exe
 ```
 
-该程序已经内嵌 Bridge bundle 和 Editor Companion，运行时不需要单独打开终端，也不再重复打包一份 `node.exe`。控制器会读取所选 Code 系编辑器的 `product.json` 和 `argv.json`，自动分析官方 CLI、扩展目录，并复用编辑器自带的 Electron/Node 22 运行 Bridge。自动分析不正确时，可直接修改“编辑器 CLI”和“扩展目录”，或使用右侧按钮选择并保存。选择尚未上线的编辑器并点击“应用并启动”时，控制器会通过该编辑器的官方命令行工具安装或修复 Companion；首次安装后只需在目标编辑器执行一次“Developer: Reload Window”。配置、密钥和运行状态保存在 `%LOCALAPPDATA%\CodexMobileBridge`，不会写进源码目录。
+该程序已经内嵌 Bridge bundle 和 Editor Companion，运行时不需要单独打开终端，也不再重复打包一份 `node.exe`。控制器会读取所选 Code 系编辑器的 `product.json` 和 `argv.json`，自动分析官方 CLI、扩展目录，并复用编辑器自带的 Electron/Node 22 运行 Bridge。自动分析不正确时，可直接修改“编辑器 CLI”和“扩展目录”，或使用右侧按钮选择并保存。选择尚未上线的编辑器并点击“应用并启动”时，控制器会通过该编辑器的官方命令行工具安装或修复 Companion，并等待目标 PID 完成注册；热激活失败时才会明确提示执行一次“Developer: Reload Window”。配置、密钥和运行状态保存在 `%LOCALAPPDATA%\CodexMobileBridge`，不会写进源码目录。
 
 ### 4. 构建并安装 Android APP
 
