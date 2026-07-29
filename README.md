@@ -513,6 +513,12 @@ GitHub Actions 会执行等价的 Windows 和 Android 构建，并在上传前�
 - C#、.NET 10、Windows Forms
 - VS Code Extension API、Codex App Server 协议、Model Context Protocol
 
+## 社区
+
+Codex Pocket 认可并感谢 [LINUX DO](https://linux.do/) 社区为开源项目交流与协作提供的平台。
+
+本项目是独立的社区开源项目，与 LINUX DO 不存在官方隶属或合作关系。
+
 ## 致谢
 
 - [OpenAI Codex](https://openai.com/codex/)：本项目连接和控制的 AI 编程环境。
