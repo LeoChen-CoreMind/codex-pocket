@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { shouldRetry, type RetryPolicy } from "./thread-service.js";
+import { retryPolicySchema } from "../server.js";
 
 const finitePolicy: RetryPolicy = {
   enabled: true,
@@ -24,4 +25,16 @@ test("until-success policy ignores the finite limit", () => {
 test("disabled or explicitly stopped retry chains never continue", () => {
   assert.equal(shouldRetry({ ...finitePolicy, enabled: false }, 0, false), false);
   assert.equal(shouldRetry(finitePolicy, 0, true), false);
+});
+
+test("retry policy accepts an omitted retry prompt from older mobile clients", () => {
+  const parsed = retryPolicySchema.parse({
+    enabled: true,
+    maxRetries: 3,
+    untilSuccess: false,
+    delaySeconds: 5
+  });
+
+  assert.equal(typeof parsed.retryPrompt, "string");
+  assert.ok(parsed.retryPrompt.length > 0);
 });

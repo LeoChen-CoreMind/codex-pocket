@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DropdownMenu
@@ -22,6 +23,7 @@ import com.garfiec.librechat.core.model.usage.ContextUsage
 import com.garfiec.librechat.feature.chat.resources.Res
 import com.garfiec.librechat.feature.chat.resources.action_search
 import com.garfiec.librechat.feature.chat.resources.action_share
+import com.garfiec.librechat.feature.chat.resources.auto_retry
 import com.garfiec.librechat.feature.chat.resources.conversation_instructions
 import org.jetbrains.compose.resources.stringResource
 
@@ -42,6 +44,7 @@ internal fun ChatOverflowMenu(
     onShowContextDetails: () -> Unit,
     onOpenSearch: () -> Unit,
     onEditInstructions: () -> Unit,
+    onEditRetrySettings: () -> Unit,
     onShare: () -> Unit,
     onExit: () -> Unit,
 ) {
@@ -73,6 +76,18 @@ internal fun ChatOverflowMenu(
                 Icon(Icons.Outlined.AutoAwesome, contentDescription = null)
             },
         )
+        if (conversationId != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.auto_retry)) },
+                onClick = {
+                    onDismiss()
+                    onEditRetrySettings()
+                },
+                leadingIcon = {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null)
+                },
+            )
+        }
         // Context-usage gauge, surfaced here as a regular menu item when the user picked the
         // overflow-menu placement. Tapping it dismisses the menu and the host (ChatFloatingTopBar)
         // opens the breakdown sheet — that modal can't be opened from inside this popup without

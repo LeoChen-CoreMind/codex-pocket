@@ -33,12 +33,13 @@ const queueUpdateSchema = z.object({ text: z.string().trim().min(1).max(100_000)
 const queueReorderSchema = z.object({ clientMessageIds: z.array(z.string().min(8).max(128)).max(20) });
 const queueSteerSchema = z.object({ expectedTurnId: z.string().min(1).max(200) });
 const interruptSchema = z.object({ expectedTurnId: z.string().min(1).max(200) });
-const retryPolicySchema = z.object({
+const defaultRetryPrompt = "\u521a\u624d\u7684\u4efb\u52a1\u5f02\u5e38\u4e2d\u65ad\u3002\u8bf7\u5148\u68c0\u67e5\u5f53\u524d\u4f1a\u8bdd\u548c\u5de5\u4f5c\u533a\u72b6\u6001\uff0c\u4ece\u4e2d\u65ad\u5904\u7ee7\u7eed\uff0c\u907f\u514d\u91cd\u590d\u5df2\u7ecf\u5b8c\u6210\u7684\u64cd\u4f5c\u3002";
+export const retryPolicySchema = z.object({
   enabled: z.boolean(),
   maxRetries: z.number().int().min(1).max(20).default(3),
   untilSuccess: z.boolean().default(false),
   delaySeconds: z.number().int().min(1).max(300).default(5),
-  retryPrompt: z.string().trim().min(1).max(4_000)
+  retryPrompt: z.string().trim().min(1).max(4_000).default(defaultRetryPrompt)
 });
 const mcpDialogConfigSchema = z.object({
   enabled: z.boolean(),

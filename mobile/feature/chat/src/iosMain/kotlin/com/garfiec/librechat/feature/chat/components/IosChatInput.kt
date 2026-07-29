@@ -31,7 +31,6 @@ import com.garfiec.librechat.feature.chat.resources.Res
 import com.garfiec.librechat.feature.chat.resources.cd_attach_file
 import com.garfiec.librechat.feature.chat.resources.cd_paste_image
 import com.garfiec.librechat.feature.chat.viewmodel.ChatInputGates
-import com.garfiec.librechat.feature.chat.viewmodel.FollowUpMode
 import com.garfiec.librechat.feature.chat.viewmodel.QueuedMessage
 import org.jetbrains.compose.resources.stringResource
 
@@ -51,8 +50,6 @@ fun IosChatInput(
     onQueue: () -> Unit = {},
     canQueue: Boolean = false,
     canStop: Boolean = true,
-    followUpMode: FollowUpMode = FollowUpMode.QUEUE,
-    onFollowUpModeChange: (FollowUpMode) -> Unit = {},
     onSteerQueuedMessage: (String) -> Unit = {},
     canSteerQueuedMessage: Boolean = false,
     queuedPausedCount: Int = 0,
@@ -105,7 +102,6 @@ fun IosChatInput(
         gates = gates,
         canQueue = canQueue,
         canStop = canStop,
-        followUpMode = followUpMode,
         isEditingQueued = isEditingQueued,
         isAwaitingUploadSend = isAwaitingUploadSend,
         contextUsage = contextUsage,
@@ -120,7 +116,6 @@ fun IosChatInput(
         onStop = onStop,
         onToggleTool = onToggleTool,
         onQueue = onQueue,
-        onFollowUpModeChange = onFollowUpModeChange,
         onSteerQueuedMessage = onSteerQueuedMessage,
         canSteerQueuedMessage = canSteerQueuedMessage,
         queuedPausedCount = queuedPausedCount,

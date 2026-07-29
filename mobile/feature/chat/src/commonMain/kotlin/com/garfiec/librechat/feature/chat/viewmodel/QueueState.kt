@@ -9,11 +9,6 @@ import com.garfiec.librechat.core.ui.components.ModelParameters
 import com.garfiec.librechat.feature.chat.components.AttachedFile
 import kotlinx.serialization.json.JsonObject
 
-enum class FollowUpMode {
-    STEER,
-    QUEUE,
-}
-
 /**
  * The in-memory FIFO follow-up queue staged while a reply streams. Owned by
  * [com.garfiec.librechat.feature.chat.viewmodel.delegate.MessageQueueDelegate];
@@ -32,8 +27,6 @@ data class QueueState(
     val bridgeQueueIds: Set<String> = emptySet(),
     val activitySource: String? = null,
     val steerable: Boolean = false,
-    /** Delivery behavior for a new follow-up composed while a turn is active. */
-    val followUpMode: FollowUpMode = FollowUpMode.QUEUE,
     val retryPolicy: RetryPolicyDto = RetryPolicyDto(),
     val retryStatus: RetryStatusDto? = null,
 )

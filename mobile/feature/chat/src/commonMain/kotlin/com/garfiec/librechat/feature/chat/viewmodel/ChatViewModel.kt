@@ -861,21 +861,13 @@ class ChatViewModel(
         if (!state.isStreaming) return
         val conversationId = state.conversationId ?: return
         val text = state.inputText.trim()
-        val deliveryMode = when (state.followUpMode) {
-            FollowUpMode.STEER -> DeliveryMode.STEER
-            FollowUpMode.QUEUE -> DeliveryMode.QUEUE
-        }
         val expectedTurnId = state.remoteTurnId
         withUploadGate(text) { ready ->
             viewModelScope.launch(defaultDispatcher) {
-                runCatching { submitRunningMessage(conversationId, ready, deliveryMode, expectedTurnId) }
+                runCatching { submitRunningMessage(conversationId, ready, DeliveryMode.QUEUE, expectedTurnId) }
                     .onFailure { error -> _uiState.update { it.copy(error = error.message) } }
             }
         }
-    }
-
-    fun setFollowUpMode(mode: FollowUpMode) {
-        _uiState.update { it.copy(queue = it.queue.copy(followUpMode = mode)) }
     }
 
     @OptIn(ExperimentalUuidApi::class)
@@ -1134,6 +1126,10 @@ class ChatViewModel(
                         _uiState.update { it.copy(error = "当前任务不可引导，消息仍保留在等待队列中") }
                     } else if (!result.steered) {
                         _uiState.update { it.copy(error = "转为引导失败，消息仍保留在队列中：${result.reason}") }
+                    } else if (!_uiState.value.isTemporaryChat) {
+                        // App-server accepted this steer; pull the user message immediately so it
+                        // appears on mobile at the same time as it does in the desktop transcript.
+                        messageRepository.refreshMessages(conversationId)
                     }
                     runCatching { threadControlApi.activity(conversationId) }.onSuccess(::applyThreadActivity)
                 }
@@ -1631,8 +1627,11 @@ class ChatViewModel(
                                     )
                                 }
                             }
-                            "message.completed" -> if (consumeRemoteTurn && _uiState.value.remoteTurnActive) {
+                            "message.completed" -> {
                                 val role = payload?.get("role")?.jsonPrimitive?.contentOrNull
+                                // A steer can target a turn whose streaming UI is owned by the local
+                                // request path. Its user-message event must still refresh Room so the
+                                // accepted guidance appears on mobile as soon as it appears on desktop.
                                 if (role == "user") refreshLiveHistory = true
                             }
                             "operation.started" -> if (consumeRemoteTurn && _uiState.value.remoteTurnActive) {
@@ -1660,7 +1659,7 @@ class ChatViewModel(
                             }
                         }
                     }
-                    if (refreshLiveHistory && _uiState.value.remoteTurnActive && !_uiState.value.isTemporaryChat) {
+                    if (refreshLiveHistory && !_uiState.value.isTemporaryChat) {
                         messageRepository.refreshMessages(conversationId)
                     }
                     if (refreshFinalHistory && !_uiState.value.remoteTurnActive && !_uiState.value.isTemporaryChat) {

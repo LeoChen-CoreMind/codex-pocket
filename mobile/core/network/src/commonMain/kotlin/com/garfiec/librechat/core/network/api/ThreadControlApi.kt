@@ -64,6 +64,15 @@ data class RetryStatusDto(
 data class RetryPolicyResponse(val policy: RetryPolicyDto)
 
 @Serializable
+private data class RetryPolicyUpdateRequest(
+    val enabled: Boolean,
+    val maxRetries: Int,
+    val untilSuccess: Boolean,
+    val delaySeconds: Int,
+    val retryPrompt: String,
+)
+
+@Serializable
 data class SubmitThreadMessageRequest(
     val clientMessageId: String,
     val text: String,
@@ -171,7 +180,17 @@ class ThreadControlApi(private val client: HttpClient) {
     suspend fun updateRetryPolicy(threadId: String, policy: RetryPolicyDto): RetryPolicyDto =
         client.put {
             url { path("api/threads/$threadId/retry") }
-            setBody(policy)
+            // This request type deliberately has no default values. Production JSON omits fields
+            // equal to their Kotlin defaults, but Bridge retry settings are a complete replacement.
+            setBody(
+                RetryPolicyUpdateRequest(
+                    enabled = policy.enabled,
+                    maxRetries = policy.maxRetries,
+                    untilSuccess = policy.untilSuccess,
+                    delaySeconds = policy.delaySeconds,
+                    retryPrompt = policy.retryPrompt,
+                ),
+            )
         }.body<RetryPolicyResponse>().policy
 
     suspend fun cancelRetry(threadId: String): ThreadActivityDto =

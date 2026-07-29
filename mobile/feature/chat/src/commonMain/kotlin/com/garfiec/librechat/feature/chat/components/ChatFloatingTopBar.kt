@@ -77,6 +77,7 @@ internal fun ChatFloatingTopBar(
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showContextSheet by remember { mutableStateOf(false) }
     var showInstructionsSheet by remember { mutableStateOf(false) }
+    var showRetrySettingsSheet by remember { mutableStateOf(false) }
     val conversationId = uiState.conversationId
     val conversationTitle = uiState.conversationTitle
 
@@ -162,6 +163,7 @@ internal fun ChatFloatingTopBar(
                     onShowContextDetails = { showContextSheet = true },
                     onOpenSearch = viewModel::openSearch,
                     onEditInstructions = { showInstructionsSheet = true },
+                    onEditRetrySettings = { showRetrySettingsSheet = true },
                     onShare = viewModel::shareConversation,
                     onExit = onExitConversation,
                 )
@@ -210,12 +212,15 @@ internal fun ChatFloatingTopBar(
     if (showInstructionsSheet) {
         ConversationInstructionsSheet(
             initialValue = uiState.modelParameters.customInstructions,
-            initialRetryPolicy = uiState.retryPolicy,
             onDismiss = { showInstructionsSheet = false },
-            onSave = { instructions, policy ->
-                viewModel.setConversationInstructions(instructions)
-                viewModel.setRetryPolicy(policy)
-            },
+            onSave = viewModel::setConversationInstructions,
+        )
+    }
+    if (showRetrySettingsSheet) {
+        AutomaticRetrySettingsSheet(
+            initialPolicy = uiState.retryPolicy,
+            onDismiss = { showRetrySettingsSheet = false },
+            onSave = viewModel::setRetryPolicy,
         )
     }
 }

@@ -161,6 +161,27 @@ class ThreadControlApiTest {
     }
 
     @Test
+    fun `retry policy includes fields that equal client defaults`() = runTest {
+        var body = ""
+        val engine = MockEngine { request ->
+            body = String(request.body.toByteArray())
+            respond(
+                content = """{"policy":{"enabled":false,"maxRetries":3,"untilSuccess":false,"delaySeconds":5,"retryPrompt":"$DEFAULT_RETRY_PROMPT"}}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+
+        ThreadControlApi(jsonClient(engine)).updateRetryPolicy("thread-1", RetryPolicyDto())
+
+        assertThat(body).contains("\"enabled\":false")
+        assertThat(body).contains("\"maxRetries\":3")
+        assertThat(body).contains("\"untilSuccess\":false")
+        assertThat(body).contains("\"delaySeconds\":5")
+        assertThat(body).contains("\"retryPrompt\"")
+    }
+
+    @Test
     fun `cancel retry post carries a JSON object body`() = runTest {
         var body = ""
         val engine = MockEngine { request ->
