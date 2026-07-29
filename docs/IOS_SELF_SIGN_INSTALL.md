@@ -2,7 +2,8 @@
 
 GitHub Release 中的 `CodexPocket-iOS-unsigned-*.ipa` 是未签名安装包，不能直接在 iPhone 上安装。用户必须使用自己的 Apple ID 重新签名；Android 的 `chennb.jks` 证书不能用于 iOS。
 
-推荐直接使用 [Sideloadly](https://sideloadly.io/) 完成签名和安装，不需要 Xcode，也不建议使用无法正常获取 Apple `XcodeToken` 的旧版签名工具。
+> **特别推荐：[Sideloadly](https://sideloadly.io/)**  
+> Windows 用户使用这个工具完成 IPA 签名和安装即可，不需要 Xcode。其他签名工具仅作为备选，也不建议使用无法正常获取 Apple `XcodeToken` 的旧版本工具。
 
 ## 安装前检查
 

@@ -197,7 +197,7 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 
 ### 4.1 安装 iPhone APP
 
-GitHub Release 提供 `CodexPocket-iOS-unsigned-*.ipa`。该 IPA 未签名，**不能直接安装**，需要使用自己的 Apple ID 通过 Sideloadly、AltStore 等工具自签后安装。免费 Apple ID 签名通常只有 7 天有效期，到期前需要重新签名安装。
+GitHub Release 提供 `CodexPocket-iOS-unsigned-*.ipa`。该 IPA 未签名，**不能直接安装**，需要使用自己的 Apple ID 自签后安装。**特别推荐使用 [Sideloadly](https://sideloadly.io/)**，操作最直接；AltStore 等工具仅作为备选。免费 Apple ID 签名通常只有 7 天有效期，到期前需要重新签名安装。
 
 完整步骤见：[iOS 自签安装说明](docs/IOS_SELF_SIGN_INSTALL.md)。iOS 正式构建使用 GitHub Actions 的 macOS runner；Windows 本机可以修改和提交 iOS 共享代码，但不能直接完成 Xcode/iPhone 安装包构建。
 
